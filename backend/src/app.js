@@ -26,7 +26,7 @@ app.use(
   helmet({
     // Pure JSON API — use same-origin CORP so browsers block cross-origin resource reads.
     // This is the helmet default; we state it explicitly for clarity.
-    crossOriginResourcePolicy: { policy: 'same-origin' },
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
     // Disable CSP for REST API (no HTML pages served)
     contentSecurityPolicy: false,
   }),
@@ -56,6 +56,7 @@ app.use(
     },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
   }),
 );
 
