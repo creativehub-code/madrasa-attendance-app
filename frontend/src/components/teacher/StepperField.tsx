@@ -14,6 +14,8 @@ interface StepperFieldProps {
   step?: number;
   disabled?: boolean;
   quickChips?: QuickChip[];
+  isWrong?: boolean;
+  onToggleWrong?: () => void;
 }
 
 export function formatFraction(val: number): string {
@@ -41,7 +43,11 @@ export default function StepperField({
   step = 1,
   disabled = false,
   quickChips,
+  isWrong = false,
+  onToggleWrong,
 }: StepperFieldProps) {
+  const isLocked = disabled || isWrong;
+
   const decrement = () => {
     const nextVal = Math.round((value - step) * 100) / 100;
     onChange(Math.max(min, nextVal));
@@ -56,28 +62,52 @@ export default function StepperField({
 
   return (
     <div className="flex flex-col gap-1.5">
-      {label && (
-        <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
-          {label}
-        </span>
-      )}
-      <div className="flex items-center justify-between gap-1 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-1">
+      <div className="flex items-center justify-between">
+        {label && (
+          <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            {label}
+          </span>
+        )}
+        {onToggleWrong && (
+          <button
+            type="button"
+            onClick={onToggleWrong}
+            title={isWrong ? "Marked as wrong (Locked). Click to unlock." : "Mark lesson as wrong (resets value to 0 & locks field)"}
+            className={`flex items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-bold transition active:scale-95 border ${
+              isWrong
+                ? 'bg-red-600 text-white border-red-700 shadow-xs ring-2 ring-red-300 dark:ring-red-800'
+                : 'bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800/60 hover:bg-red-100 dark:hover:bg-red-900/50'
+            }`}
+          >
+            <span aria-hidden="true">❌</span>
+            <span className="text-[10px] uppercase tracking-wider font-extrabold">{isWrong ? 'Wrong (Locked)' : 'Wrong'}</span>
+          </button>
+        )}
+      </div>
+
+      <div className={`flex items-center justify-between gap-1 rounded-xl border p-1 transition-colors ${
+        isWrong
+          ? 'border-red-300 bg-red-50/50 dark:border-red-900/60 dark:bg-red-950/30'
+          : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800'
+      }`}>
         <button
           type="button"
           onClick={decrement}
-          disabled={disabled || value <= min}
+          disabled={isLocked || value <= min}
           aria-label={`Decrease ${label || 'value'}`}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white dark:bg-gray-700 text-xl font-bold text-madrasa-700 dark:text-emerald-400 shadow-xs transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
         >
           −
         </button>
-        <span className="min-w-[4rem] text-center text-xl font-bold tabular-nums text-gray-900 dark:text-white">
+        <span className={`min-w-[4rem] text-center text-xl font-bold tabular-nums ${
+          isWrong ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'
+        }`}>
           {formattedDisplay}
         </span>
         <button
           type="button"
           onClick={increment}
-          disabled={disabled || value >= max}
+          disabled={isLocked || value >= max}
           aria-label={`Increase ${label || 'value'}`}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white dark:bg-gray-700 text-xl font-bold text-madrasa-700 dark:text-emerald-400 shadow-xs transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
         >
@@ -95,7 +125,7 @@ export default function StepperField({
               <button
                 key={chip.label}
                 type="button"
-                disabled={disabled}
+                disabled={isLocked}
                 onClick={() => onChange(chip.value)}
                 className={`flex-1 rounded-lg py-1 px-1.5 text-xs font-bold transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 ${
                   isActive

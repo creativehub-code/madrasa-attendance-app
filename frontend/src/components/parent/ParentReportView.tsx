@@ -423,24 +423,30 @@ export default function ParentReportView() {
                               <span className="text-[11px] text-gray-500 dark:text-gray-400 uppercase font-black tracking-wider mb-2">
                                 Puthiya
                               </span>
-                              <span className="text-2xl font-black text-gray-900 dark:text-white">
-                                {progressByDate.get(actualSelectedDate).puthiyaPadam || 0}
+                              <span className="text-xl font-black text-gray-900 dark:text-white">
+                                {progressByDate.get(actualSelectedDate).isPuthiyaPadamWrong
+                                  ? '0 Lines ❌'
+                                  : `${progressByDate.get(actualSelectedDate).puthiyaPadam || 0} ${(progressByDate.get(actualSelectedDate).puthiyaPadam || 0) === 1 ? 'Line' : 'Lines'}`}
                               </span>
                             </div>
                             <div className="flex flex-col items-center bg-blue-50 dark:bg-blue-900/20 p-4 rounded-3xl border border-blue-100 dark:border-blue-800/50">
                               <span className="text-[11px] text-blue-500 dark:text-blue-400 uppercase font-black tracking-wider mb-2">
-                                Juzu
+                                Current Lesson
                               </span>
-                              <span className="text-2xl font-black text-blue-900 dark:text-blue-300">
-                                {progressByDate.get(actualSelectedDate).juzuNumber || progressByDate.get(actualSelectedDate).juzuPadam || 1}
+                              <span className="text-xl font-black text-blue-900 dark:text-blue-300">
+                                {progressByDate.get(actualSelectedDate).isCurrentLessonWrong
+                                  ? '0 Pages ❌'
+                                  : `${progressByDate.get(actualSelectedDate).juzuPadam || progressByDate.get(actualSelectedDate).juzuNumber || 0} ${(progressByDate.get(actualSelectedDate).juzuPadam || 0) === 1 ? 'Page' : 'Pages'}`}
                               </span>
                             </div>
                             <div className="flex flex-col items-center bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-3xl border border-emerald-100 dark:border-emerald-800/50">
                               <span className="text-[11px] text-emerald-600 dark:text-emerald-400 uppercase font-black tracking-wider mb-2">
                                 Pazhaya
                               </span>
-                              <span className="text-2xl font-black text-emerald-900 dark:text-emerald-300">
-                                {progressByDate.get(actualSelectedDate).pazhayaPadam || 0}
+                              <span className="text-xl font-black text-emerald-900 dark:text-emerald-300">
+                                {progressByDate.get(actualSelectedDate).isPazhayaPadamWrong
+                                  ? '0 Pages ❌'
+                                  : `${progressByDate.get(actualSelectedDate).pazhayaPadam || 0} ${(progressByDate.get(actualSelectedDate).pazhayaPadam || 0) === 1 ? 'Page' : 'Pages'}`}
                               </span>
                             </div>
                           </div>
@@ -531,25 +537,30 @@ export default function ParentReportView() {
                                       <span className="text-[9px] text-blue-500 dark:text-blue-400 uppercase font-black tracking-wider">
                                         Puthiya
                                       </span>
-                                      <span className="text-xl font-black text-blue-700 dark:text-blue-300 mt-1">
-                                        {p.puthiyaPadam || 0}{' '}
-                                        <span className="text-xs font-semibold text-blue-500">lines</span>
+                                      <span className="text-sm font-black text-blue-700 dark:text-blue-300 mt-1">
+                                        {p.isPuthiyaPadamWrong
+                                          ? '0 Lines ❌'
+                                          : `${p.puthiyaPadam || 0} ${(p.puthiyaPadam || 0) === 1 ? 'Line' : 'Lines'}`}
                                       </span>
                                     </div>
                                     <div className="flex flex-col items-center bg-purple-50 dark:bg-purple-900/20 p-3 rounded-xl border border-purple-100 dark:border-purple-800/50">
                                       <span className="text-[9px] text-purple-500 dark:text-purple-400 uppercase font-black tracking-wider">
-                                        Juzu
+                                        Current Lesson
                                       </span>
-                                      <span className="text-xl font-black text-purple-700 dark:text-purple-300 mt-1">
-                                        {p.juzuNumber || p.juzuPadam || 1}
+                                      <span className="text-sm font-black text-purple-700 dark:text-purple-300 mt-1">
+                                        {p.isCurrentLessonWrong
+                                          ? '0 Pages ❌'
+                                          : `${p.juzuPadam || p.juzuNumber || 0} ${(p.juzuPadam || 0) === 1 ? 'Page' : 'Pages'}`}
                                       </span>
                                     </div>
                                     <div className="flex flex-col items-center bg-orange-50 dark:bg-orange-900/20 p-3 rounded-xl border border-orange-100 dark:border-orange-800/50">
                                       <span className="text-[9px] text-orange-600 dark:text-orange-400 uppercase font-black tracking-wider">
                                         Pazhaya
                                       </span>
-                                      <span className="text-xl font-black text-orange-700 dark:text-orange-300 mt-1">
-                                        {p.pazhayaPadam || 0}
+                                      <span className="text-sm font-black text-orange-700 dark:text-orange-300 mt-1">
+                                        {p.isPazhayaPadamWrong
+                                          ? '0 Pages ❌'
+                                          : `${p.pazhayaPadam || 0} ${(p.pazhayaPadam || 0) === 1 ? 'Page' : 'Pages'}`}
                                       </span>
                                     </div>
                                   </div>

@@ -15,18 +15,40 @@ type StudentDraft = ProgressEntry & {
   rollNumber: string;
 };
 
-const emptyDraft = (student: Student): StudentDraft => ({
-  studentId: student._id,
-  studentName: student.name,
-  rollNumber: student.rollNumber,
-  juzuNumber: student.currentJuzu || 1,
-  puthiyaPadam: 0,
-  juzuPadam: 0,
-  pazhayaPadam: 0,
-  isAbsent: false,
-  needsRevision: false,
-  notes: '',
-});
+const emptyDraft = (student: Student): StudentDraft => {
+  if (student.todayProgress) {
+    return {
+      studentId: student._id,
+      studentName: student.name,
+      rollNumber: student.rollNumber,
+      juzuNumber: student.currentJuzu ?? student.todayProgress.juzuNumber ?? 1,
+      puthiyaPadam: student.todayProgress.puthiyaPadam ?? 0,
+      juzuPadam: student.todayProgress.juzuPadam ?? 0,
+      pazhayaPadam: student.todayProgress.pazhayaPadam ?? 0,
+      isPuthiyaPadamWrong: Boolean(student.todayProgress.isPuthiyaPadamWrong),
+      isCurrentLessonWrong: Boolean(student.todayProgress.isCurrentLessonWrong),
+      isPazhayaPadamWrong: Boolean(student.todayProgress.isPazhayaPadamWrong),
+      isAbsent: Boolean(student.todayProgress.isAbsent),
+      needsRevision: Boolean(student.todayProgress.needsRevision),
+      notes: student.todayProgress.notes || '',
+    };
+  }
+  return {
+    studentId: student._id,
+    studentName: student.name,
+    rollNumber: student.rollNumber,
+    juzuNumber: student.currentJuzu || 1,
+    puthiyaPadam: 0,
+    juzuPadam: 0,
+    pazhayaPadam: 0,
+    isPuthiyaPadamWrong: false,
+    isCurrentLessonWrong: false,
+    isPazhayaPadamWrong: false,
+    isAbsent: false,
+    needsRevision: false,
+    notes: '',
+  };
+};
 
 export default function FlashcardProgressEntry() {
   const queryClient = useQueryClient();
@@ -179,12 +201,15 @@ export default function FlashcardProgressEntry() {
           category,
           isAbsent: draft.isAbsent,
           needsRevision: draft.needsRevision,
+          isPuthiyaPadamWrong: Boolean(draft.isPuthiyaPadamWrong),
+          isCurrentLessonWrong: Boolean(draft.isCurrentLessonWrong),
+          isPazhayaPadamWrong: Boolean(draft.isPazhayaPadamWrong),
           notes: draft.notes?.trim() || undefined,
         };
       }
     );
 
-    bulkSubmitMutation.mutate({ date: today, entries });
+    bulkSubmitMutation.mutate({ date: new Date().toISOString(), entries });
   };
 
   const submitting = bulkSubmitMutation.isPending;
@@ -391,6 +416,14 @@ export default function FlashcardProgressEntry() {
                     max={isDowra ? 30 : 999}
                     step={1}
                     disabled={currentDraft.isAbsent || currentDraft.needsRevision}
+                    isWrong={Boolean(currentDraft.isPuthiyaPadamWrong)}
+                    onToggleWrong={() => {
+                      const nextState = !currentDraft.isPuthiyaPadamWrong;
+                      updateDraft(currentStudent._id, {
+                        isPuthiyaPadamWrong: nextState,
+                        ...(nextState ? { puthiyaPadam: 0 } : {}),
+                      });
+                    }}
                     quickChips={
                       isDowra
                         ? [
@@ -401,40 +434,56 @@ export default function FlashcardProgressEntry() {
                             { label: 'Juz 30', value: 30 },
                           ]
                         : [
-                            { label: '5L', value: 5 },
-                            { label: '10L', value: 10 },
-                            { label: '15L', value: 15 },
-                            { label: '20L', value: 20 },
+                            { label: '5 Lines', value: 5 },
+                            { label: '10 Lines', value: 10 },
+                            { label: '15 Lines', value: 15 },
+                            { label: '20 Lines', value: 20 },
                           ]
                     }
                   />
                   <StepperField
-                    label={isDowra ? "Current Sabqi" : "Juzu Padam"}
+                    label={isDowra ? "Current Sabqi" : "Current Lesson / Juzu Padam"}
                     value={currentDraft.juzuPadam}
                     onChange={(v) => updateDraft(currentStudent._id, { juzuPadam: v })}
                     max={30}
-                    step={0.25}
-                    quickChips={[
-                      { label: '1/4', value: 0.25 },
-                      { label: '1/2', value: 0.5 },
-                      { label: '3/4', value: 0.75 },
-                      { label: '1', value: 1.0 },
-                    ]}
+                    step={1}
                     disabled={currentDraft.isAbsent}
+                    isWrong={Boolean(currentDraft.isCurrentLessonWrong)}
+                    onToggleWrong={() => {
+                      const nextState = !currentDraft.isCurrentLessonWrong;
+                      updateDraft(currentStudent._id, {
+                        isCurrentLessonWrong: nextState,
+                        ...(nextState ? { juzuPadam: 0 } : {}),
+                      });
+                    }}
+                    quickChips={[
+                      { label: '5 Pages', value: 5 },
+                      { label: '10 Pages', value: 10 },
+                      { label: '15 Pages', value: 15 },
+                      { label: '20 Pages', value: 20 },
+                    ]}
                   />
                   <StepperField
                     label={isDowra ? "Old Sabqi" : "Pazhaya Padam"}
                     value={currentDraft.pazhayaPadam}
                     onChange={(v) => updateDraft(currentStudent._id, { pazhayaPadam: v })}
                     max={isDowra ? 30 : 999}
-                    step={0.25}
-                    quickChips={[
-                      { label: '1/4', value: 0.25 },
-                      { label: '1/2', value: 0.5 },
-                      { label: '3/4', value: 0.75 },
-                      { label: '1', value: 1.0 },
-                    ]}
+                    step={1}
                     disabled={currentDraft.isAbsent}
+                    isWrong={Boolean(currentDraft.isPazhayaPadamWrong)}
+                    onToggleWrong={() => {
+                      const nextState = !currentDraft.isPazhayaPadamWrong;
+                      updateDraft(currentStudent._id, {
+                        isPazhayaPadamWrong: nextState,
+                        ...(nextState ? { pazhayaPadam: 0 } : {}),
+                      });
+                    }}
+                    quickChips={[
+                      { label: '5 Pages', value: 5 },
+                      { label: '10 Pages', value: 10 },
+                      { label: '15 Pages', value: 15 },
+                      { label: '20 Pages', value: 20 },
+                    ]}
                   />
                 </>
               )}

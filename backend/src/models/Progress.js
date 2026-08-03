@@ -60,6 +60,18 @@ const progressSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isPuthiyaPadamWrong: {
+      type: Boolean,
+      default: false,
+    },
+    isCurrentLessonWrong: {
+      type: Boolean,
+      default: false,
+    },
+    isPazhayaPadamWrong: {
+      type: Boolean,
+      default: false,
+    },
     notes: {
       type: String,
       default: '',

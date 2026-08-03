@@ -77,6 +77,9 @@ const getAssignedStudents = asyncHandler(async (req, res) => {
       category: p.category || 'Regular',
       isAbsent: p.isAbsent,
       needsRevision: p.needsRevision,
+      isPuthiyaPadamWrong: p.isPuthiyaPadamWrong || false,
+      isCurrentLessonWrong: p.isCurrentLessonWrong || false,
+      isPazhayaPadamWrong: p.pazhayaPadamWrong || p.isPazhayaPadamWrong || false,
       notes: p.notes,
     };
   });
@@ -191,6 +194,9 @@ const submitProgress = asyncHandler(async (req, res) => {
             category: entry.category || 'Regular',
             isAbsent,
             needsRevision: isAbsent ? false : Boolean(entry.needsRevision),
+            isPuthiyaPadamWrong: isAbsent ? false : Boolean(entry.isPuthiyaPadamWrong),
+            isCurrentLessonWrong: isAbsent ? false : Boolean(entry.isCurrentLessonWrong),
+            isPazhayaPadamWrong: isAbsent ? false : Boolean(entry.isPazhayaPadamWrong),
             notes: entry.notes?.trim() || '',
             isLocked: true,
           },

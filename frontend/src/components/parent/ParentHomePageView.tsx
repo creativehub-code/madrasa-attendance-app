@@ -354,16 +354,18 @@ export default function ParentHomePageView() {
                           </div>
                           <div>
                             <span className={`inline-block rounded-full px-3 py-0.5 text-xs font-bold ${
-                              needsRevision
+                              needsRevision || progressRecord?.isPuthiyaPadamWrong
                                 ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
                                 : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
                             }`}>
-                              {needsRevision
+                              {progressRecord?.isPuthiyaPadamWrong
+                                ? '0 Lines (Wrong ❌)'
+                                : needsRevision
                                 ? '0 Lines (Locked)'
                                 : progressRecord
                                 ? isDowra
                                   ? `Juz #${progressRecord.puthiyaPadam || 1}`
-                                  : `${progressRecord.puthiyaPadam || 0} Lines`
+                                  : `${progressRecord.puthiyaPadam || 0} ${(progressRecord.puthiyaPadam || 0) === 1 ? 'Line' : 'Lines'}`
                                 : 'Not recorded yet'}
                             </span>
                           </div>
@@ -378,7 +380,6 @@ export default function ParentHomePageView() {
                                 {isDowra ? "Current Sabqi" : "Current Lesson"}
                               </span>
                             </div>
-                            {/* PROMINENT DOWRA COUNT BADGE FOR DOWRA CATEGORY */}
                             {isDowra ? (
                               <span className="rounded-full bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 text-[10px] font-black">
                                 Dowra #{dowraCountNum}
@@ -388,9 +389,15 @@ export default function ParentHomePageView() {
                             )}
                           </div>
                           <div>
-                            <span className="inline-block rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 px-3 py-0.5 text-xs font-bold">
+                            <span className={`inline-block rounded-full px-3 py-0.5 text-xs font-bold ${
+                              progressRecord?.isCurrentLessonWrong
+                                ? 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20'
+                                : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'
+                            }`}>
                               {progressRecord
-                                ? `${formatFraction(progressRecord.juzuPadam || 0)} Portion`
+                                ? progressRecord.isCurrentLessonWrong
+                                  ? '0 Pages (Wrong ❌)'
+                                  : `${progressRecord.juzuPadam || 0} ${(progressRecord.juzuPadam || 0) === 1 ? 'Page' : 'Pages'}`
                                 : 'Not recorded yet'}
                             </span>
                           </div>
@@ -408,9 +415,15 @@ export default function ParentHomePageView() {
                             <span className="text-[9px] font-extrabold uppercase tracking-widest text-purple-400">Revision</span>
                           </div>
                           <div>
-                            <span className="inline-block rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 px-3 py-0.5 text-xs font-bold">
+                            <span className={`inline-block rounded-full px-3 py-0.5 text-xs font-bold ${
+                              progressRecord?.isPazhayaPadamWrong
+                                ? 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20'
+                                : 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20'
+                            }`}>
                               {progressRecord
-                                ? `${formatFraction(progressRecord.pazhayaPadam || 0)} Portion`
+                                ? progressRecord.isPazhayaPadamWrong
+                                  ? '0 Pages (Wrong ❌)'
+                                  : `${progressRecord.pazhayaPadam || 0} ${(progressRecord.pazhayaPadam || 0) === 1 ? 'Page' : 'Pages'}`
                                 : 'Not recorded yet'}
                             </span>
                           </div>

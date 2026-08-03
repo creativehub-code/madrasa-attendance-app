@@ -81,6 +81,21 @@ const submitProgressValidator = [
     .isBoolean()
     .withMessage('isAbsent must be a boolean')
     .toBoolean(),
+  body('entries.*.isPuthiyaPadamWrong')
+    .optional()
+    .isBoolean()
+    .withMessage('isPuthiyaPadamWrong must be a boolean')
+    .toBoolean(),
+  body('entries.*.isCurrentLessonWrong')
+    .optional()
+    .isBoolean()
+    .withMessage('isCurrentLessonWrong must be a boolean')
+    .toBoolean(),
+  body('entries.*.isPazhayaPadamWrong')
+    .optional()
+    .isBoolean()
+    .withMessage('isPazhayaPadamWrong must be a boolean')
+    .toBoolean(),
   body('date')
     .optional()
     .isISO8601()

@@ -131,6 +131,9 @@ export interface TodayProgress {
   pazhayaPadam?: number;
   isAbsent?: boolean;
   needsRevision?: boolean;
+  isPuthiyaPadamWrong?: boolean;
+  isCurrentLessonWrong?: boolean;
+  isPazhayaPadamWrong?: boolean;
   notes?: string;
 }
 
@@ -669,6 +672,9 @@ export interface ParentDailyProgressResponse {
     category?: string;
     isAbsent: boolean;
     needsRevision: boolean;
+    isPuthiyaPadamWrong?: boolean;
+    isCurrentLessonWrong?: boolean;
+    isPazhayaPadamWrong?: boolean;
     notes?: string;
   } | null;
   schoolProgress?: SchoolProgressItem[];
@@ -693,6 +699,9 @@ export interface ParentMonthlyProgressResponse {
     pazhayaPadam: number;
     isAbsent: boolean;
     needsRevision: boolean;
+    isPuthiyaPadamWrong?: boolean;
+    isCurrentLessonWrong?: boolean;
+    isPazhayaPadamWrong?: boolean;
     notes?: string;
   }>;
   schoolProgress?: SchoolProgressItem[];

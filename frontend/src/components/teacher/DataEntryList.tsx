@@ -6,7 +6,7 @@ import { submitProgress, fetchTeacherStudents, fetchTeacherSubmissionStatus, upd
 import type { ProgressEntry, Student } from '@/types';
 import StepperField from '@/components/teacher/StepperField';
 import JuzuSelector from '@/components/teacher/JuzuSelector';
-import { RotateCcw, AlertCircle, RefreshCw, Loader2, CheckCircle2, Lock, Award, GraduationCap } from 'lucide-react';
+import { RotateCcw, AlertCircle, RefreshCw, Loader2, CheckCircle2, Lock, Award, GraduationCap, Search, X } from 'lucide-react';
 
 import { getStudentCategory } from '@/lib/studentCategory';
 
@@ -22,6 +22,9 @@ const draftFromStudent = (s: Student): StudentDraft => {
       puthiyaPadam: s.todayProgress.puthiyaPadam ?? 0,
       juzuPadam: s.todayProgress.juzuPadam ?? 0,
       pazhayaPadam: s.todayProgress.pazhayaPadam ?? 0,
+      isPuthiyaPadamWrong: Boolean(s.todayProgress.isPuthiyaPadamWrong),
+      isCurrentLessonWrong: Boolean(s.todayProgress.isCurrentLessonWrong),
+      isPazhayaPadamWrong: Boolean(s.todayProgress.isPazhayaPadamWrong),
       isAbsent: Boolean(s.todayProgress.isAbsent),
       needsRevision: Boolean(s.todayProgress.needsRevision),
       notes: s.todayProgress.notes || '',
@@ -35,6 +38,9 @@ const draftFromStudent = (s: Student): StudentDraft => {
     puthiyaPadam: 0,
     juzuPadam: 0,
     pazhayaPadam: 0,
+    isPuthiyaPadamWrong: false,
+    isCurrentLessonWrong: false,
+    isPazhayaPadamWrong: false,
     isAbsent: false,
     needsRevision: false,
     notes: '',
@@ -82,6 +88,20 @@ export default function DataEntryList() {
   const [drafts, setDrafts] = useState<Record<string, StudentDraft>>({});
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Student Search State & Filtering
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  const filteredStudents = useMemo(() => {
+    if (!searchQuery.trim()) return students;
+    const q = searchQuery.toLowerCase().trim();
+    return students.filter(
+      (s) =>
+        s.name.toLowerCase().includes(q) ||
+        (s.rollNumber && String(s.rollNumber).toLowerCase().includes(q))
+    );
+  }, [students, searchQuery]);
 
   // Active Exams Query & State
   const { data: examsData } = useQuery({
@@ -244,11 +264,14 @@ export default function DataEntryList() {
           category,
           isAbsent: draft.isAbsent,
           needsRevision: draft.needsRevision,
+          isPuthiyaPadamWrong: Boolean(draft.isPuthiyaPadamWrong),
+          isCurrentLessonWrong: Boolean(draft.isCurrentLessonWrong),
+          isPazhayaPadamWrong: Boolean(draft.isPazhayaPadamWrong),
           notes: draft.notes?.trim() || undefined,
         };
       }
     );
-    submitMutation.mutate({ date: new Date().toISOString().split('T')[0], entries });
+    submitMutation.mutate({ date: new Date().toISOString(), entries });
   };
 
   const submitting = submitMutation.isPending;
@@ -396,14 +419,66 @@ export default function DataEntryList() {
         </div>
       )}
 
-      {students.map((student) => {
-        const draft = drafts[student._id];
-        if (!draft) return null;
+      {/* Minimalistic Student Search Header */}
+      <div className="flex items-center justify-between gap-2 px-1 py-1">
+        <span className="text-xs font-extrabold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          Assigned Students ({filteredStudents.length}{searchQuery ? ` of ${students.length}` : ''})
+        </span>
 
-        const isNeedsRevision = draft.needsRevision && !draft.isAbsent;
-        const isDisabledOverall = draft.isAbsent || isSubmittedToday || student.status === 'Discontinued';
+        {/* Minimal Expandable Search Box with Lucide Search SVG Icon */}
+        <div className="relative flex items-center justify-end">
+          {isSearchOpen ? (
+            <div className="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1.5 shadow-xs transition-all duration-200">
+              <Search className="h-4 w-4 text-gray-400 shrink-0" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search name or ID…"
+                autoFocus
+                className="w-36 sm:w-48 bg-transparent text-xs font-semibold text-gray-900 dark:text-white placeholder:text-gray-400 outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (searchQuery) {
+                    setSearchQuery('');
+                  } else {
+                    setIsSearchOpen(false);
+                  }
+                }}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 shrink-0"
+                title="Clear or close search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsSearchOpen(true)}
+              title="Search students by Name or ID"
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition active:scale-95 shadow-xs"
+            >
+              <Search className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      </div>
 
-        return (
+      {filteredStudents.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-gray-300 dark:border-gray-800 p-8 text-center text-xs font-semibold text-gray-500 dark:text-gray-400">
+          No students found matching &quot;{searchQuery}&quot;.
+        </div>
+      ) : (
+        filteredStudents.map((student) => {
+          const draft = drafts[student._id];
+          if (!draft) return null;
+
+          const isNeedsRevision = draft.needsRevision && !draft.isAbsent;
+          const isDisabledOverall = draft.isAbsent || isSubmittedToday || student.status === 'Discontinued';
+
+          return (
           <article
             key={student._id}
             className={`rounded-2xl border transition-all duration-200 shadow-sm overflow-hidden ${
@@ -602,6 +677,14 @@ export default function DataEntryList() {
                             onChange={(v) => updateDraft(student._id, { puthiyaPadam: v })}
                             max={isDowra ? 30 : 999}
                             step={1}
+                            isWrong={Boolean(draft.isPuthiyaPadamWrong)}
+                            onToggleWrong={() => {
+                              const nextState = !draft.isPuthiyaPadamWrong;
+                              updateDraft(student._id, {
+                                isPuthiyaPadamWrong: nextState,
+                                ...(nextState ? { puthiyaPadam: 0 } : {}),
+                              });
+                            }}
                             quickChips={
                               isDowra
                                 ? [
@@ -612,10 +695,10 @@ export default function DataEntryList() {
                                     { label: 'Juz 30', value: 30 },
                                   ]
                                 : [
-                                    { label: '5L', value: 5 },
-                                    { label: '10L', value: 10 },
-                                    { label: '15L', value: 15 },
-                                    { label: '20L', value: 20 },
+                                    { label: '5 Lines', value: 5 },
+                                    { label: '10 Lines', value: 10 },
+                                    { label: '15 Lines', value: 15 },
+                                    { label: '20 Lines', value: 20 },
                                   ]
                             }
                             disabled={isDisabledOverall || draft.needsRevision}
@@ -627,10 +710,10 @@ export default function DataEntryList() {
                       <div className="flex items-start justify-between px-5 py-3.5">
                         <div className="pt-1">
                           <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                            {isDowra ? 'Current Sabqi (Juz #)' : 'current lesson'}
+                            {isDowra ? 'Current Sabqi (Juz #)' : 'Current Lesson / Juzu Padam'}
                           </p>
                           <p className="text-xs text-gray-400">
-                            {isDowra ? 'Sabqi Portion' : 'Current Part (Portion)'}
+                            {isDowra ? 'Sabqi Portion' : 'Current Lesson Portion'}
                           </p>
                         </div>
                         <div className="shrink-0 block w-full max-w-[200px] text-right">
@@ -639,12 +722,20 @@ export default function DataEntryList() {
                             value={draft.juzuPadam}
                             onChange={(v) => updateDraft(student._id, { juzuPadam: v })}
                             max={30}
-                            step={0.25}
+                            step={1}
+                            isWrong={Boolean(draft.isCurrentLessonWrong)}
+                            onToggleWrong={() => {
+                              const nextState = !draft.isCurrentLessonWrong;
+                              updateDraft(student._id, {
+                                isCurrentLessonWrong: nextState,
+                                ...(nextState ? { juzuPadam: 0 } : {}),
+                              });
+                            }}
                             quickChips={[
-                              { label: '1/4', value: 0.25 },
-                              { label: '1/2', value: 0.5 },
-                              { label: '3/4', value: 0.75 },
-                              { label: '1', value: 1.0 },
+                              { label: '5 Pages', value: 5 },
+                              { label: '10 Pages', value: 10 },
+                              { label: '15 Pages', value: 15 },
+                              { label: '20 Pages', value: 20 },
                             ]}
                             disabled={isDisabledOverall}
                           />
@@ -655,10 +746,10 @@ export default function DataEntryList() {
                       <div className="flex items-start justify-between px-5 py-3.5">
                         <div className="pt-1">
                           <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                            {isDowra ? 'Old Sabqi (Juz #)' : 'Old lesson'}
+                            {isDowra ? 'Old Sabqi (Juz #)' : 'Pazhaya Padam'}
                           </p>
                           <p className="text-xs text-gray-400">
-                            {isDowra ? 'Revision Portion' : 'Revision (Portion)'}
+                            {isDowra ? 'Revision Portion' : 'Revision Portion'}
                           </p>
                         </div>
                         <div className="shrink-0 block w-full max-w-[200px] text-right">
@@ -667,12 +758,20 @@ export default function DataEntryList() {
                             value={draft.pazhayaPadam}
                             onChange={(v) => updateDraft(student._id, { pazhayaPadam: v })}
                             max={isDowra ? 30 : 999}
-                            step={0.25}
+                            step={1}
+                            isWrong={Boolean(draft.isPazhayaPadamWrong)}
+                            onToggleWrong={() => {
+                              const nextState = !draft.isPazhayaPadamWrong;
+                              updateDraft(student._id, {
+                                isPazhayaPadamWrong: nextState,
+                                ...(nextState ? { pazhayaPadam: 0 } : {}),
+                              });
+                            }}
                             quickChips={[
-                              { label: '1/4', value: 0.25 },
-                              { label: '1/2', value: 0.5 },
-                              { label: '3/4', value: 0.75 },
-                              { label: '1', value: 1.0 },
+                              { label: '5 Pages', value: 5 },
+                              { label: '10 Pages', value: 10 },
+                              { label: '15 Pages', value: 15 },
+                              { label: '20 Pages', value: 20 },
                             ]}
                             disabled={isDisabledOverall}
                           />
@@ -685,7 +784,8 @@ export default function DataEntryList() {
             })()}
           </article>
         );
-      })}
+      })
+      )}
 
       {/* Alerts */}
       {error && (

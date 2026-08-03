@@ -93,6 +93,12 @@ const progressEntrySchema = z.object({
 
   needsRevision: z.boolean({ invalid_type_error: 'needsRevision must be a boolean' }).optional(),
 
+  isPuthiyaPadamWrong: z.boolean({ invalid_type_error: 'isPuthiyaPadamWrong must be a boolean' }).optional(),
+
+  isCurrentLessonWrong: z.boolean({ invalid_type_error: 'isCurrentLessonWrong must be a boolean' }).optional(),
+
+  isPazhayaPadamWrong: z.boolean({ invalid_type_error: 'isPazhayaPadamWrong must be a boolean' }).optional(),
+
   notes: z
     .string({ invalid_type_error: 'notes must be a string' })
     .max(500, 'notes must not exceed 500 characters')

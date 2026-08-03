@@ -29,6 +29,9 @@ export interface TodayProgress {
   category?: string;
   isAbsent?: boolean;
   needsRevision?: boolean;
+  isPuthiyaPadamWrong?: boolean;
+  isCurrentLessonWrong?: boolean;
+  isPazhayaPadamWrong?: boolean;
   notes?: string;
 }
 
@@ -66,6 +69,9 @@ export interface ProgressEntry {
   category?: string;
   isAbsent: boolean;
   needsRevision?: boolean;
+  isPuthiyaPadamWrong?: boolean;
+  isCurrentLessonWrong?: boolean;
+  isPazhayaPadamWrong?: boolean;
   notes?: string;
 }
 
