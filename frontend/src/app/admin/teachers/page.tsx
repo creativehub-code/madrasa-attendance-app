@@ -22,8 +22,10 @@ import {
   ChevronRight,
   MessageSquare,
   Trash2,
+  GraduationCap,
 } from 'lucide-react';
 import { useAdminTheme } from '@/context/AdminThemeContext';
+import { STANDARDS } from '@/types';
 import {
   fetchAdminTeachers,
   fetchAdminRecentActivities,
@@ -33,11 +35,15 @@ import {
   createTeacher,
   unlockTeacherProgress,
   formatTeacherName,
+  fetchClasses,
+  createClass,
   type AdminTeacher,
   type AdminStats,
   type CreateTeacherResult,
   type IssueReport,
+  type ClassItem,
 } from '@/lib/api';
+import TeacherDetailsModal from '@/components/admin/TeacherDetailsModal';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -109,6 +115,7 @@ export default function AdminTeachersPage() {
   const [reportsPage, setReportsPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [selectedTeacher, setSelectedTeacher] = useState<AdminTeacher | null>(null);
 
   // Add teacher form
   const [teacherFullName, setTeacherFullName] = useState('');
@@ -116,6 +123,13 @@ export default function AdminTeachersPage() {
   const [teacherPassword, setTeacherPassword] = useState('');
   const [teacherRole, setTeacherRole] = useState<'Teacher' | 'school_teacher'>('Teacher');
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Role-specific form state
+  const [selectedStandards, setSelectedStandards] = useState<string[]>([]);
+  const [selectedClassId, setSelectedClassId] = useState('');
+  const [selectedClassName, setSelectedClassName] = useState('');
+  const [showNewClassInput, setShowNewClassInput] = useState(false);
+  const [newClassName, setNewClassName] = useState('');
   const [createdTeacher, setCreatedTeacher] = useState<CreateTeacherResult | null>(null);
 
   // ── Queries ─────────────────────────────────────────────────────────────────
@@ -249,7 +263,41 @@ export default function AdminTeachersPage() {
     setTeacherRole('Teacher');
     setFormError(null);
     setCreatedTeacher(null);
+    setSelectedStandards([]);
+    setSelectedClassId('');
+    setSelectedClassName('');
+    setShowNewClassInput(false);
+    setNewClassName('');
   };
+
+  // ── Classes Query (for Madrasa Teacher class dropdown) ─────────────────────
+  const { data: classesData } = useQuery({
+    queryKey: ['classes'],
+    queryFn: async () => {
+      const res = await fetchClasses();
+      return res.data.classes;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const classes: ClassItem[] = classesData || [];
+
+  // ── Inline Class Creation ──────────────────────────────────────────────────
+  const createClassMutation = useMutation({
+    mutationFn: createClass,
+    onSuccess: (res) => {
+      const newClass = res.data.class;
+      queryClient.invalidateQueries({ queryKey: ['classes'] });
+      setSelectedClassId(newClass._id);
+      setSelectedClassName(newClass.name);
+      setShowNewClassInput(false);
+      setNewClassName('');
+      showNotification(`Class "${newClass.name}" created!`);
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Failed to create class';
+      setFormError(msg);
+    },
+  });
 
   // ── Mutation ────────────────────────────────────────────────────────────────
   const createTeacherMutation = useMutation({
@@ -276,6 +324,9 @@ export default function AdminTeachersPage() {
       password: teacherPassword,
       fullName: teacherFullName,
       role: teacherRole,
+      standards: teacherRole === 'school_teacher' ? selectedStandards : undefined,
+      assignedClass: teacherRole === 'Teacher' && selectedClassId ? selectedClassId : undefined,
+      assignedClassName: teacherRole === 'Teacher' && selectedClassName ? selectedClassName : undefined,
     });
   };
 
@@ -461,31 +512,48 @@ export default function AdminTeachersPage() {
               <div className="divide-y divide-gray-100 dark:divide-gray-800">
                 {teachers.map((teacher) => {
                   const displayName = formatTeacherName(teacher.name);
+                  const isSchoolTeacher = teacher.role === 'school_teacher';
+                  const displayAssignment = isSchoolTeacher
+                    ? (teacher.standards && teacher.standards.length > 0 ? teacher.standards.join(', ') : 'No standards assigned')
+                    : (teacher.assignedClassName || 'No class assigned');
+
                   return (
                     <div
                       key={String(teacher._id)}
-                      className="flex items-center justify-between px-4 py-3.5 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition"
+                      onClick={() => setSelectedTeacher(teacher)}
+                      className="flex items-center justify-between px-4 py-3.5 hover:bg-gray-50/70 dark:hover:bg-gray-800/70 transition cursor-pointer group"
                     >
                       <div className="flex items-center gap-3">
                         <div
-                          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold transition group-hover:scale-105 ${
                             darkMode ? 'bg-gray-800 text-madrasa-400' : 'bg-madrasa-100 text-madrasa-700'
                           }`}
                         >
                           {displayName.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <h3 className={`font-bold text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                            {displayName}
-                          </h3>
-                          <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                            {teacher.className || 'No class assigned'} &bull;{' '}
+                          <div className="flex items-center gap-2">
+                            <h3 className={`font-bold text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                              {displayName}
+                            </h3>
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold border ${
+                              isSchoolTeacher
+                                ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800'
+                                : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800'
+                            }`}>
+                              {isSchoolTeacher ? 'School Teacher' : 'Madrasa Teacher'}
+                            </span>
+                          </div>
+                          <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                            <span className="font-medium">{isSchoolTeacher ? 'Standards: ' : 'Class: '}</span>
+                            <span className="font-semibold text-gray-700 dark:text-gray-300">{displayAssignment}</span>
+                            {' '}&bull;{' '}
                             {teacher.studentCount} student{teacher.studentCount !== 1 ? 's' : ''}
                           </p>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                         {teacher.isSubmittedToday ? (
                           <>
                             <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200 flex items-center gap-1 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-900">
@@ -495,7 +563,8 @@ export default function AdminTeachersPage() {
                             <button
                               type="button"
                               disabled={unlockMutation.isPending}
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 if (confirm(`Unlock today's submission for ${displayName}? This will allow the teacher to resubmit.`)) {
                                   unlockMutation.mutate(teacher._id);
                                 }
@@ -979,48 +1048,124 @@ export default function AdminTeachersPage() {
                   />
                   <p className="mt-1.5 text-[10px] text-gray-400">Teacher will be forced to change on first login.</p>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {/* Role-Specific Conditional Form Logic */}
+                {teacherRole === 'school_teacher' ? (
+                  /* ── School Teacher: Multi-Select Standards ── */
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300 mb-1.5">
-                      Assigned Class
-                    </label>
-                    <input
-                      list="teacher-class-options"
-                      type="text"
-                      placeholder="e.g. Grade 5, Class 1A"
-                      className={`w-full rounded-xl border px-3.5 py-2.5 text-sm font-medium transition-all duration-200 outline-none shadow-xs ${
-                        darkMode
-                          ? 'bg-gray-800/80 border-gray-700 text-white placeholder:text-gray-500 hover:border-gray-600 focus:bg-gray-900 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20'
-                          : 'bg-gray-50/70 border-gray-200 text-gray-900 placeholder:text-gray-400 hover:bg-white hover:border-gray-300 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10'
-                      }`}
-                    />
-                    <datalist id="teacher-class-options">
-                      <option value="Class 1A" />
-                      <option value="Class 2B" />
-                      <option value="Class 3C" />
-                      <option value="Class 4A" />
-                      <option value="Grade 5" />
-                      <option value="Grade 6" />
-                    </datalist>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">
+                        Assigned Standards <span className="text-emerald-500 font-bold">*</span>
+                      </label>
+                      <span className="text-[10px] font-semibold text-madrasa-700 dark:text-madrasa-400">
+                        {selectedStandards.length} selected
+                      </span>
+                    </div>
+                    <div className={`p-3 rounded-2xl border max-h-40 overflow-y-auto grid grid-cols-2 gap-2 text-xs ${
+                      darkMode ? 'bg-gray-800/60 border-gray-700' : 'bg-gray-50/70 border-gray-200'
+                    }`}>
+                      {STANDARDS.map((std) => {
+                        const isSelected = selectedStandards.includes(std);
+                        return (
+                          <label
+                            key={std}
+                            className={`flex items-center gap-2 p-2 rounded-xl border transition cursor-pointer select-none ${
+                              isSelected
+                                ? 'bg-madrasa-700 text-white border-madrasa-700 font-bold shadow-xs'
+                                : darkMode
+                                ? 'bg-gray-800 border-gray-700 text-gray-300 hover:border-gray-600'
+                                : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => {
+                                if (isSelected) {
+                                  setSelectedStandards(selectedStandards.filter((s) => s !== std));
+                                } else {
+                                  setSelectedStandards([...selectedStandards, std]);
+                                }
+                              }}
+                              className="sr-only"
+                            />
+                            <div className={`h-4 w-4 rounded-md border flex items-center justify-center transition ${
+                              isSelected ? 'bg-white text-madrasa-700 border-white' : 'border-gray-400'
+                            }`}>
+                              {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
+                            </div>
+                            <span className="truncate">{std}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
                   </div>
+                ) : (
+                  /* ── Madrasa Teacher: Class Dropdown with Inline Class Creation via React Query ── */
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300 mb-1.5">
-                      Specialization
-                    </label>
-                    <select
-                      className={`w-full rounded-xl border px-3.5 py-2.5 text-sm font-medium transition-all duration-200 outline-none shadow-xs ${
-                        darkMode
-                          ? 'bg-gray-800/80 border-gray-700 text-white hover:border-gray-600 focus:bg-gray-900 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20'
-                          : 'bg-gray-50/70 border-gray-200 text-gray-900 hover:bg-white hover:border-gray-300 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10'
-                      }`}
-                    >
-                      <option>Quran &amp; Tajweed</option>
-                      <option>Hifz</option>
-                      <option>Islamic Studies</option>
-                      <option>Arabic Language</option>
-                    </select>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">
+                        Assigned Class <span className="text-emerald-500 font-bold">*</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setShowNewClassInput(!showNewClassInput)}
+                        className="flex items-center gap-1 text-[11px] font-bold text-madrasa-700 dark:text-madrasa-400 hover:underline"
+                      >
+                        <Plus className="h-3 w-3" />
+                        {showNewClassInput ? 'Select Existing Class' : 'Create New Class'}
+                      </button>
+                    </div>
+
+                    {showNewClassInput ? (
+                      /* Inline Class Creation Form */
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={newClassName}
+                          onChange={(e) => setNewClassName(e.target.value)}
+                          placeholder="e.g. Class 1A, Grade 5"
+                          className={`flex-1 rounded-xl border px-3.5 py-2 text-sm font-medium transition-all outline-none ${
+                            darkMode
+                              ? 'bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-emerald-500'
+                              : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-emerald-500'
+                          }`}
+                        />
+                        <button
+                          type="button"
+                          disabled={createClassMutation.isPending || !newClassName.trim()}
+                          onClick={() => createClassMutation.mutate({ name: newClassName.trim() })}
+                          className="flex items-center gap-1.5 rounded-xl bg-madrasa-700 hover:bg-madrasa-800 text-white px-3.5 py-2 text-xs font-bold transition shadow-xs disabled:opacity-50"
+                        >
+                          {createClassMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                          Create
+                        </button>
+                      </div>
+                    ) : (
+                      /* Dropdown */
+                      <select
+                        value={selectedClassId}
+                        onChange={(e) => {
+                          const clsId = e.target.value;
+                          setSelectedClassId(clsId);
+                          const matched = classes.find((c) => c._id === clsId);
+                          setSelectedClassName(matched ? matched.name : '');
+                        }}
+                        className={`w-full rounded-xl border px-3.5 py-2.5 text-sm font-semibold transition-all duration-200 outline-none shadow-xs ${
+                          darkMode
+                            ? 'bg-gray-800/80 border-gray-700 text-white hover:border-gray-600 focus:bg-gray-900 focus:border-emerald-500'
+                            : 'bg-gray-50/70 border-gray-200 text-gray-900 hover:bg-white hover:border-gray-300 focus:bg-white focus:border-emerald-500'
+                        }`}
+                      >
+                        <option value="">-- Select Assigned Class --</option>
+                        {classes.map((cls) => (
+                          <option key={cls._id} value={cls._id}>
+                            {cls.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
-                </div>
+                )}
 
                 {/* Live credentials preview */}
                 {(teacherEmail || teacherPassword) && (
@@ -1110,6 +1255,13 @@ export default function AdminTeachersPage() {
             </div>
           </div>
         </div>
+      )}
+      {/* Teacher Details & Management Modal */}
+      {selectedTeacher && (
+        <TeacherDetailsModal
+          teacher={selectedTeacher}
+          onClose={() => setSelectedTeacher(null)}
+        />
       )}
     </main>
   );

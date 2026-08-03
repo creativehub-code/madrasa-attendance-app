@@ -395,8 +395,11 @@ export async function fetchAdminStudents(params?: { page?: number; limit?: numbe
 export interface AdminTeacher {
   _id: string;
   name: string;
-  standard?: string;
-  className?: string;
+  role?: string;
+  standards?: string[];
+  assignedClassName?: string;
+  status?: string;
+  isActive?: boolean;
   studentCount: number;
   isSubmittedToday?: boolean;
 }
@@ -532,10 +535,20 @@ export interface CreateTeacherPayload {
   password: string;
   fullName?: string;
   role?: string;
+  standards?: string[];
+  assignedClass?: string;
+  assignedClassName?: string;
 }
 
 export interface CreateTeacherResult {
-  teacher: { _id: string; username: string; role: string; mustChangePassword: boolean };
+  teacher: {
+    _id: string;
+    username: string;
+    role: string;
+    mustChangePassword: boolean;
+    standards?: string[];
+    assignedClassName?: string;
+  };
   message: string;
 }
 
@@ -543,6 +556,62 @@ export async function createTeacher(payload: CreateTeacherPayload) {
   return api<{ success: boolean; data: CreateTeacherResult }>('/admin/teachers/create', {
     method: 'POST',
     body: payload,
+  });
+}
+
+// ── Teacher Management (Admin) ─────────────────────────────────────────────
+
+export interface TeacherStudent {
+  _id: string;
+  name: string;
+  rollNumber: string;
+  standard?: string;
+  section?: string;
+  className?: string;
+  status?: string;
+  parentUsername?: string;
+}
+
+export interface TeacherDetailsResponse {
+  teacher: {
+    _id: string;
+    name: string;
+    role: string;
+    standards: string[];
+    assignedClassName: string;
+    status: string;
+    isActive: boolean;
+  };
+  students: TeacherStudent[];
+}
+
+export async function fetchAdminTeacherStudents(teacherId: string) {
+  return api<{ success: boolean; data: TeacherDetailsResponse }>(`/admin/teachers/${teacherId}/students`);
+}
+
+export async function terminateTeacher(teacherId: string) {
+  return api<{ success: boolean; data: { message: string } }>(`/admin/teachers/${teacherId}/terminate`, {
+    method: 'PATCH',
+  });
+}
+
+export interface UpdateTeacherPayload {
+  standards?: string[];
+  assignedClass?: string | null;
+  assignedClassName?: string;
+  status?: string;
+}
+
+export async function updateTeacher(teacherId: string, payload: UpdateTeacherPayload) {
+  return api<{ success: boolean; data: { message: string; teacher: AdminTeacher } }>(`/admin/teachers/${teacherId}`, {
+    method: 'PUT',
+    body: payload,
+  });
+}
+
+export async function hardDeleteTeacher(teacherId: string) {
+  return api<{ success: boolean; data: { message: string } }>(`/admin/teachers/${teacherId}`, {
+    method: 'DELETE',
   });
 }
 

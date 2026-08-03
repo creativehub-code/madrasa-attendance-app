@@ -25,8 +25,14 @@ const getEndOfDay = (d = new Date()) => {
  * @route GET /api/school-teacher/classes
  * @access Private (School Teacher / Admin)
  */
-const getClassesAndStudents = asyncHandler(async (_req, res) => {
-  const students = await Student.find({ isActive: true })
+const getClassesAndStudents = asyncHandler(async (req, res) => {
+  // Scope by teacher's assigned standards if available
+  const filter = { isActive: true };
+  if (req.user.role === 'school_teacher' && req.user.standards?.length > 0) {
+    filter.standard = { $in: req.user.standards };
+  }
+
+  const students = await Student.find(filter)
     .select('_id name admissionNumber standard academicYear')
     .sort({ standard: 1, name: 1 })
     .lean();

@@ -6,41 +6,41 @@ const xss = require("xss-clean");
 const rateLimit = require("express-rate-limit");
 // CORS — allow comma-separated list of origins via CLIENT_URL env var.
 // Example: CLIENT_URL=https://madrasa.vercel.app,http://localhost:3000
-const { clientUrl } = require('./config/env');
-const { notFound, errorHandler } = require('./middleware/errorHandler');
+const { clientUrl } = require("./config/env");
+const { notFound, errorHandler } = require("./middleware/errorHandler");
 
-const authRoutes = require('./routes/auth.routes');
-const adminRoutes = require('./routes/admin.routes');
-const teacherRoutes = require('./routes/teacher.routes');
-const parentRoutes = require('./routes/parent.routes');
-const schoolTeacherRoutes = require('./routes/schoolTeacher.routes');
-const studentRoutes = require('./routes/student.routes');
-const academicRoutes = require('./routes/academic.routes');
-const classRoutes = require('./routes/class.routes');
+const authRoutes = require("./routes/auth.routes");
+const adminRoutes = require("./routes/admin.routes");
+const teacherRoutes = require("./routes/teacher.routes");
+const parentRoutes = require("./routes/parent.routes");
+const schoolTeacherRoutes = require("./routes/schoolTeacher.routes");
+const studentRoutes = require("./routes/student.routes");
+const academicRoutes = require("./routes/academic.routes");
+const classRoutes = require("./routes/class.routes");
 
 const app = express();
 
-app.set('trust proxy', 1);
+app.set("trust proxy", 1);
 
 app.use(
   helmet({
     // Pure JSON API — use same-origin CORP so browsers block cross-origin resource reads.
     // This is the helmet default; we state it explicitly for clarity.
-    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    crossOriginResourcePolicy: { policy: "cross-origin" },
     // Disable CSP for REST API (no HTML pages served)
     contentSecurityPolicy: false,
   }),
 );
 
 const allowedOrigins = clientUrl
-  .split(',')
+  .split(",")
   .map((o) => o.trim())
   .filter(Boolean);
 
 // Always allow localhost in development
-if (process.env.NODE_ENV !== 'production') {
-  if (!allowedOrigins.includes('http://localhost:3000')) {
-    allowedOrigins.push('http://localhost:3000');
+if (process.env.NODE_ENV !== "production") {
+  if (!allowedOrigins.includes("http://localhost:3000")) {
+    allowedOrigins.push("http://localhost:3000");
   }
 }
 
@@ -54,8 +54,8 @@ app.use(
       }
       callback(new Error(`CORS: Origin "${origin}" is not allowed`));
     },
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   }),
 );
@@ -81,7 +81,7 @@ const authLimiter = rateLimit({
   skipSuccessfulRequests: true, // Only count failed attempts
   message: {
     success: false,
-    message: 'Too many login attempts. Please try again in 15 minutes.',
+    message: "Too many login attempts. Please try again in 15 minutes.",
   },
 });
 
@@ -92,10 +92,11 @@ const generalLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   // Exempt the lightweight health/test-connection endpoints from throttling
-  skip: (req) => req.path === '/api/health' || req.path === '/api/test-connection',
+  skip: (req) =>
+    req.path === "/api/health" || req.path === "/api/test-connection",
   message: {
     success: false,
-    message: 'Too many requests from this IP, please try again in 15 minutes.',
+    message: "Too many requests from this IP, please try again in 15 minutes.",
   },
 });
 
@@ -111,11 +112,11 @@ app.get("/api/test-connection", (req, res) => {
 });
 
 // Apply general rate limiter globally to all /api routes
-app.use('/api', generalLimiter);
+app.use("/api", generalLimiter);
 
 // Auth limiter: stricter, applied only to the login endpoint
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth', authRoutes);
+app.use("/api/auth/login", authLimiter);
+app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/teacher", teacherRoutes);
 app.use("/api/parent", parentRoutes);

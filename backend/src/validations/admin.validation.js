@@ -32,6 +32,13 @@ const createAdminTeacherBodySchema = z.object({
     .max(128, 'Password must not exceed 128 characters'),
   fullName: z.string().max(100).optional(),
   role: z.enum(['Teacher', 'school_teacher']).optional(),
+  standards: z.array(z.string().max(50)).max(15).optional(),
+  assignedClass: mongoIdSchema.optional().or(z.literal('')),
+  assignedClassName: z.string().max(100).optional(),
+});
+
+const teacherIdParamsSchema = z.object({
+  id: mongoIdSchema,
 });
 
 const createAnnouncementBodySchema = z.object({
@@ -66,6 +73,14 @@ const reportDeleteParamsSchema = z.object({
   id: mongoIdSchema,
 });
 
+const updateTeacherBodySchema = z.object({
+  standards: z.array(z.string().max(50)).max(15).optional(),
+  assignedClass: mongoIdSchema.optional().or(z.literal('')).nullable(),
+  assignedClassName: z.string().max(100).optional(),
+  status: z.enum(['Active', 'Terminated']).optional(),
+  fullName: z.string().max(100).optional(),
+});
+
 module.exports = {
   createAdminStudentBodySchema,
   createAdminTeacherBodySchema,
@@ -75,4 +90,6 @@ module.exports = {
   reportActionParamsSchema,
   reportActionBodySchema,
   reportDeleteParamsSchema,
+  teacherIdParamsSchema,
+  updateTeacherBodySchema,
 };

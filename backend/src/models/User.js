@@ -33,6 +33,33 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    // ─── Role-Specific Assignment Fields (backward-compatible) ──────────────
+    // School Teachers: array of assigned standards (e.g. ["5th Standard", "8th Standard"])
+    standards: {
+      type: [String],
+      default: [],
+      validate: {
+        validator: (arr) => arr.length <= 15,
+        message: 'Cannot assign more than 15 standards',
+      },
+    },
+    // Madrasa Teachers: reference to assigned Class document
+    assignedClass: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Class',
+      default: null,
+    },
+    assignedClassName: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    // Soft-delete status for teachers (Active / Terminated)
+    status: {
+      type: String,
+      enum: ['Active', 'Terminated'],
+      default: 'Active',
+    },
   },
   {
     timestamps: true,

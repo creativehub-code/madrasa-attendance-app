@@ -11,6 +11,8 @@ const {
   reportActionParamsSchema,
   reportActionBodySchema,
   reportDeleteParamsSchema,
+  teacherIdParamsSchema,
+  updateTeacherBodySchema,
 } = require('../validations/admin.validation');
 const {
   createUserValidator,
@@ -41,6 +43,10 @@ const {
   getStudentProgressSummary,
   getSections,
   getParents,
+  terminateTeacher,
+  deleteTeacher,
+  getTeacherStudents,
+  updateTeacher,
 } = require('../controllers/admin.controller');
 
 const router = express.Router();
@@ -57,6 +63,28 @@ router.get('/students/:id/progress', getStudentProgressSummary);
 router.get('/teachers', getTeachers);
 router.get('/recent-activities', getRecentActivities);
 router.get('/reports', getIssueReports);
+
+// ── Teacher Management ─────────────────────────────────────────────────────────
+router.get(
+  '/teachers/:id/students',
+  validateRequest({ params: teacherIdParamsSchema }),
+  getTeacherStudents
+);
+router.put(
+  '/teachers/:id',
+  validateRequest({ params: teacherIdParamsSchema, body: updateTeacherBodySchema }),
+  updateTeacher
+);
+router.patch(
+  '/teachers/:id/terminate',
+  validateRequest({ params: teacherIdParamsSchema }),
+  terminateTeacher
+);
+router.delete(
+  '/teachers/:id',
+  validateRequest({ params: teacherIdParamsSchema }),
+  deleteTeacher
+);
 
 // ── Mutation Endpoints ─────────────────────────────────────────────────────────
 router.patch(
@@ -121,4 +149,3 @@ router.post(
 );
 
 module.exports = router;
-

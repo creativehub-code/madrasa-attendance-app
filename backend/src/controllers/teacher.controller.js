@@ -30,10 +30,16 @@ const getISTDateBounds = (dateInput) => {
 // ─── GET /teacher/students ────────────────────────────────────────────────────
 
 const getAssignedStudents = asyncHandler(async (req, res) => {
-  const students = await Student.find({
-    teacherId: req.user._id,
-    isActive: true,
-  })
+  // RBAC scoping: school teachers see students by assigned standards,
+  // madrasa teachers see only their directly-assigned students
+  const filter = { isActive: true };
+  if (req.user.role === 'school_teacher' && req.user.standards?.length > 0) {
+    filter.standard = { $in: req.user.standards };
+  } else {
+    filter.teacherId = req.user._id;
+  }
+
+  const students = await Student.find(filter)
     .select('name admissionNumber section className needsRevision revisionReason currentJuzu status')
     .sort({ status: 1, name: 1 })
     .lean();
@@ -97,10 +103,14 @@ const getAssignedStudents = asyncHandler(async (req, res) => {
 const getTeacherSubmissionStatus = asyncHandler(async (req, res) => {
   const { start: todayStart, end: todayEnd } = getISTDateBounds();
 
-  const students = await Student.find({
-    teacherId: req.user._id,
-    isActive: true,
-  }).select('_id').lean();
+  const filter = { isActive: true };
+  if (req.user.role === 'school_teacher' && req.user.standards?.length > 0) {
+    filter.standard = { $in: req.user.standards };
+  } else {
+    filter.teacherId = req.user._id;
+  }
+
+  const students = await Student.find(filter).select('_id').lean();
 
   const studentIds = students.map((s) => s._id);
 
@@ -213,10 +223,14 @@ const submitProgress = asyncHandler(async (req, res) => {
 const getClassSummary = asyncHandler(async (req, res) => {
   const { start: todayStart, end: todayEnd } = getISTDateBounds();
 
-  const students = await Student.find({
-    teacherId: req.user._id,
-    isActive: true,
-  })
+  const filter = { isActive: true };
+  if (req.user.role === 'school_teacher' && req.user.standards?.length > 0) {
+    filter.standard = { $in: req.user.standards };
+  } else {
+    filter.teacherId = req.user._id;
+  }
+
+  const students = await Student.find(filter)
     .select('_id name admissionNumber className needsRevision')
     .lean();
 
@@ -252,10 +266,14 @@ const getClassSummary = asyncHandler(async (req, res) => {
 // ─── GET /teacher/needs-attention ─────────────────────────────────────────────
 
 const getNeedsAttention = asyncHandler(async (req, res) => {
-  const students = await Student.find({
-    teacherId: req.user._id,
-    isActive: true,
-  })
+  const filter = { isActive: true };
+  if (req.user.role === 'school_teacher' && req.user.standards?.length > 0) {
+    filter.standard = { $in: req.user.standards };
+  } else {
+    filter.teacherId = req.user._id;
+  }
+
+  const students = await Student.find(filter)
     .select('_id name admissionNumber className needsRevision revisionReason')
     .lean();
 

@@ -247,16 +247,24 @@ const createStudent = asyncHandler(async (req, res) => {
 // Password is hashed by the User.js pre-save bcrypt hook — no manual hashing here.
 
 const createTeacher = asyncHandler(async (req, res) => {
-  const { username, password, fullName, role } = req.body;
+  const { username, password, fullName, role, standards, assignedClass, assignedClassName } = req.body;
 
   const loginUsername = username.toLowerCase().trim();
   const assignedRole = role || 'Teacher';
 
-  console.log('[Admin] createTeacher payload:', { loginUsername, fullName, role: assignedRole });
+  console.log('[Admin] createTeacher payload:', { loginUsername, fullName, role: assignedRole, standards, assignedClass });
 
   const existing = await User.findOne({ username: loginUsername });
   if (existing) {
     throw new AppError(`Username "${loginUsername}" is already taken`, 409);
+  }
+
+  // Validate assignedClass if provided for Madrasa Teachers
+  if (assignedRole === 'Teacher' && assignedClass) {
+    const classDoc = await Class.findById(assignedClass);
+    if (!classDoc) {
+      throw new AppError('Selected class not found', 404);
+    }
   }
 
   // User.create triggers the pre-save hook which runs bcrypt.hash(password, 12)
@@ -265,6 +273,9 @@ const createTeacher = asyncHandler(async (req, res) => {
     password,
     role: assignedRole,
     mustChangePassword: true,
+    standards: assignedRole === 'school_teacher' ? (standards || []) : [],
+    assignedClass: assignedRole === 'Teacher' ? (assignedClass || null) : null,
+    assignedClassName: assignedRole === 'Teacher' ? (assignedClassName || '') : '',
   });
 
   console.log('[Admin] createTeacher — success:', { teacherId: teacher._id, username: teacher.username, role: teacher.role });
@@ -283,6 +294,8 @@ const createTeacher = asyncHandler(async (req, res) => {
         username: teacher.username,
         role: teacher.role,
         mustChangePassword: teacher.mustChangePassword,
+        standards: teacher.standards,
+        assignedClassName: teacher.assignedClassName,
       },
       message: `${assignedRole === 'school_teacher' ? 'School Teacher' : 'Teacher'} account "${teacher.username}" created successfully`,
     },
@@ -535,23 +548,39 @@ const getStudentProgressSummary = asyncHandler(async (req, res) => {
 // ─── GET /admin/teachers ──────────────────────────────────────────────────────
 
 const getTeachers = asyncHandler(async (req, res) => {
-  const teachers = await User.find({ role: { $in: ['Teacher', 'school_teacher'] }, isActive: true })
-    .select('username role createdAt')
+  const teachers = await User.find({ role: { $in: ['Teacher', 'school_teacher'] } })
+    .select('username role createdAt standards assignedClass assignedClassName status isActive')
+    .populate('assignedClass', 'name')
     .lean();
-
-  const teacherIds = teachers.map((t) => t._id);
-  const studentCounts = await Student.aggregate([
-    { $match: { teacherId: { $in: teacherIds }, isActive: true } },
-    { $group: { _id: '$teacherId', count: { $sum: 1 }, standards: { $addToSet: '$standard' } } },
-  ]);
-
-  const countMap = {};
-  studentCounts.forEach((c) => {
-    countMap[c._id.toString()] = { count: c.count, standards: c.standards };
-  });
 
   const { start: todayStart, end: todayEnd } = getISTDateBounds();
 
+  // Calculate role-specific student counts:
+  // 1. School Teachers: Count active students whose standard is in the teacher's standards array.
+  // 2. Madrasa Teachers: Count active students assigned to teacherId or matching assignedClass.
+  const studentCountPromises = teachers.map(async (t) => {
+    let filter = { isActive: true };
+
+    if (t.role === 'school_teacher') {
+      if (t.standards && t.standards.length > 0) {
+        filter.standard = { $in: t.standards };
+      } else {
+        filter.teacherId = t._id;
+      }
+    } else {
+      if (t.assignedClass) {
+        filter.$or = [{ teacherId: t._id }, { classId: t.assignedClass }];
+      } else {
+        filter.teacherId = t._id;
+      }
+    }
+
+    return Student.countDocuments(filter);
+  });
+
+  const studentCounts = await Promise.all(studentCountPromises);
+
+  // Check today's progress submissions
   const todayProgresses = await Progress.aggregate([
     { $match: { date: { $gte: todayStart, $lte: todayEnd }, isLocked: true } },
     {
@@ -570,14 +599,28 @@ const getTeachers = asyncHandler(async (req, res) => {
     todayProgresses.map((p) => (p._id ? p._id.toString() : null)).filter(Boolean)
   );
 
-  const result = teachers.map((t) => ({
-    _id: t._id,
-    name: t.username,
-    studentCount: countMap[t._id.toString()]?.count || 0,
-    standard: (countMap[t._id.toString()]?.standards || []).filter(Boolean).join(', ') || '—',
-    className: (countMap[t._id.toString()]?.standards || []).filter(Boolean).join(', ') || '—',
-    isSubmittedToday: submittedTeacherIds.has(t._id.toString()),
-  }));
+  const result = teachers.map((t, index) => {
+    // Resolve assigned class name from populated ref or fallback field
+    const populatedClassName = t.assignedClass && typeof t.assignedClass === 'object'
+      ? t.assignedClass.name
+      : null;
+
+    return {
+      _id: t._id,
+      name: t.username,
+      role: t.role,
+      studentCount: studentCounts[index] || 0,
+      // School Teachers: standards from User document
+      standards: t.role === 'school_teacher' ? (t.standards || []) : [],
+      // Madrasa Teachers: class name from User document
+      assignedClassName: t.role === 'Teacher'
+        ? (populatedClassName || t.assignedClassName || '')
+        : '',
+      status: t.status || 'Active',
+      isActive: t.isActive,
+      isSubmittedToday: submittedTeacherIds.has(t._id.toString()),
+    };
+  });
 
   res.json({ success: true, data: { teachers: result } });
 });
@@ -809,6 +852,198 @@ const getParents = asyncHandler(async (_req, res) => {
   });
 });
 
+// ─── PATCH /admin/teachers/:id/terminate ──────────────────────────────────────
+// Soft-delete: sets teacher status to 'Terminated' and isActive to false
+
+const terminateTeacher = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const teacher = await User.findOne({ _id: id, role: { $in: ['Teacher', 'school_teacher'] } });
+  if (!teacher) throw new AppError('Teacher not found', 404);
+
+  teacher.status = 'Terminated';
+  teacher.isActive = false;
+  await teacher.save();
+
+  await logActivity({
+    actionType: 'TEACHER_TERMINATED',
+    message: `Admin terminated teacher account: ${teacher.username}`,
+    performedById: req.user?._id,
+  });
+
+  res.json({
+    success: true,
+    data: { message: `Teacher "${teacher.username}" has been terminated.` },
+  });
+});
+
+// ─── DELETE /admin/teachers/:id ───────────────────────────────────────────────
+// Hard-delete: permanently removes teacher, reassigns students to admin
+
+const deleteTeacher = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const teacher = await User.findOne({ _id: id, role: { $in: ['Teacher', 'school_teacher'] } });
+  if (!teacher) throw new AppError('Teacher not found', 404);
+
+  // Reassign all students to the admin (temporary holder)
+  const reassigned = await Student.updateMany(
+    { teacherId: id },
+    { $set: { teacherId: req.user._id } }
+  );
+
+  await User.deleteOne({ _id: id });
+
+  await logActivity({
+    actionType: 'TEACHER_DELETED',
+    message: `Admin permanently deleted teacher: ${teacher.username}. ${reassigned.modifiedCount} student(s) reassigned.`,
+    performedById: req.user?._id,
+  });
+
+  res.json({
+    success: true,
+    data: {
+      message: `Teacher "${teacher.username}" permanently deleted. ${reassigned.modifiedCount} student(s) reassigned to admin.`,
+    },
+  });
+});
+
+// ─── GET /admin/teachers/:id/students ─────────────────────────────────────────
+// Fetch students for a specific teacher (used by the TeacherDetailsModal)
+
+const getTeacherStudents = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const teacher = await User.findOne({ _id: id, role: { $in: ['Teacher', 'school_teacher'] } })
+    .select('username role standards assignedClass assignedClassName status isActive')
+    .populate('assignedClass', 'name')
+    .lean();
+
+  if (!teacher) throw new AppError('Teacher not found', 404);
+
+  // Build filter: school teachers scoped by standards, madrasa teachers by teacherId
+  const filter = { isActive: true };
+  if (teacher.role === 'school_teacher' && teacher.standards?.length > 0) {
+    filter.standard = { $in: teacher.standards };
+  } else {
+    filter.teacherId = id;
+  }
+
+  const students = await Student.find(filter)
+    .select('name admissionNumber standard section className status')
+    .populate('parentId', 'username')
+    .sort({ name: 1 })
+    .lean();
+
+  const populatedClassName = teacher.assignedClass && typeof teacher.assignedClass === 'object'
+    ? teacher.assignedClass.name
+    : null;
+
+  res.json({
+    success: true,
+    data: {
+      teacher: {
+        _id: teacher._id,
+        name: teacher.username,
+        role: teacher.role,
+        standards: teacher.standards || [],
+        assignedClassName: populatedClassName || teacher.assignedClassName || '',
+        status: teacher.status || 'Active',
+        isActive: teacher.isActive,
+      },
+      students: students.map((s) => ({
+        _id: s._id,
+        name: s.name,
+        rollNumber: s.admissionNumber,
+        standard: s.standard,
+        section: s.section || '',
+        className: s.className || '',
+        status: s.status || 'Active',
+        parentUsername: s.parentId?.username || '—',
+      })),
+    },
+  });
+});
+
+// ─── PUT /admin/teachers/:id ──────────────────────────────────────────────────
+// Safely updates a teacher's assignedClass, assignedClassName, standards, or status.
+// Only modifies the target teacher document — multiple teachers can share the same Class/Standard.
+
+const updateTeacher = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { standards, assignedClass, assignedClassName, status } = req.body;
+
+  const teacher = await User.findOne({ _id: id, role: { $in: ['Teacher', 'school_teacher'] } });
+  if (!teacher) throw new AppError('Teacher account not found', 404);
+
+  if (teacher.role === 'school_teacher') {
+    if (standards !== undefined) {
+      teacher.standards = Array.isArray(standards) ? standards : [];
+    }
+  } else if (teacher.role === 'Teacher') {
+    if (assignedClass !== undefined) {
+      if (assignedClass === null || assignedClass === '') {
+        teacher.assignedClass = null;
+        teacher.assignedClassName = '';
+      } else {
+        if (!mongoose.Types.ObjectId.isValid(assignedClass)) {
+          throw new AppError('Invalid class ID format', 400);
+        }
+        const classObj = await Class.findById(assignedClass);
+        if (!classObj) throw new AppError('Selected class not found', 404);
+        teacher.assignedClass = classObj._id;
+        teacher.assignedClassName = classObj.name;
+      }
+    } else if (assignedClassName !== undefined) {
+      teacher.assignedClassName = assignedClassName ? assignedClassName.trim() : '';
+    }
+  }
+
+  if (status && ['Active', 'Terminated'].includes(status)) {
+    teacher.status = status;
+    if (status === 'Terminated') {
+      teacher.isActive = false;
+    } else if (status === 'Active') {
+      teacher.isActive = true;
+    }
+  }
+
+  await teacher.save();
+
+  await logActivity({
+    actionType: 'TEACHER_UPDATED',
+    message: `Admin updated teacher assignment for ${teacher.username}`,
+    performedById: req.user?._id,
+  });
+
+  const populatedTeacher = await User.findById(teacher._id)
+    .select('username role createdAt standards assignedClass assignedClassName status isActive')
+    .populate('assignedClass', 'name')
+    .lean();
+
+  const populatedClassName = populatedTeacher.assignedClass && typeof populatedTeacher.assignedClass === 'object'
+    ? populatedTeacher.assignedClass.name
+    : null;
+
+  res.json({
+    success: true,
+    data: {
+      message: `Teacher "${teacher.username}" updated successfully.`,
+      teacher: {
+        _id: populatedTeacher._id,
+        name: populatedTeacher.username,
+        role: populatedTeacher.role,
+        standards: populatedTeacher.role === 'school_teacher' ? (populatedTeacher.standards || []) : [],
+        assignedClassName: populatedTeacher.role === 'Teacher'
+          ? (populatedClassName || populatedTeacher.assignedClassName || '')
+          : '',
+        status: populatedTeacher.status || 'Active',
+        isActive: populatedTeacher.isActive,
+      },
+    },
+  });
+});
+
 module.exports = {
   createUser,
   bulkCreateStudents,
@@ -829,4 +1064,9 @@ module.exports = {
   updateReportAction,
   deleteReport,
   getSections,
+  terminateTeacher,
+  deleteTeacher,
+  getTeacherStudents,
+  updateTeacher,
 };
+
