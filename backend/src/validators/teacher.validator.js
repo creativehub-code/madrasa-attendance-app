@@ -52,6 +52,16 @@ const submitProgressValidator = [
     .isInt({ min: 0, max: 999 })
     .withMessage('puthiyaPadamLines must be 0–999')
     .toInt(),
+  body('entries.*.puthiyaPadam')
+    .optional({ nullable: true })
+    .isInt({ min: 0, max: 999 })
+    .withMessage('puthiyaPadam must be 0–999')
+    .toInt(),
+  body('entries.*.juzuPadam')
+    .optional({ nullable: true })
+    .isFloat({ min: 0, max: 999 })
+    .withMessage('juzuPadam must be 0–999')
+    .toFloat(),
   body('entries.*.juzuNumber')
     .optional({ nullable: true })
     .isInt({ min: 1, max: 100 })
@@ -70,6 +80,11 @@ const submitProgressValidator = [
     .optional()
     .isInt({ min: 0, max: 999 })
     .withMessage('pazhayaPadamPages must be 0–999')
+    .toInt(),
+  body('entries.*.pazhayaPadam')
+    .optional({ nullable: true })
+    .isInt({ min: 0, max: 999 })
+    .withMessage('pazhayaPadam must be 0–999')
     .toInt(),
   body('entries.*.juzuPadamPortion')
     .optional()

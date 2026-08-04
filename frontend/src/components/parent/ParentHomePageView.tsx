@@ -363,10 +363,10 @@ export default function ParentHomePageView() {
                                 : needsRevision
                                 ? '0 Lines (Locked)'
                                 : progressRecord
-                                ? isDowra
-                                  ? `Juz #${progressRecord.puthiyaPadam || 1}`
-                                  : `${progressRecord.puthiyaPadam || 0} ${(progressRecord.puthiyaPadam || 0) === 1 ? 'Line' : 'Lines'}`
-                                : 'Not recorded yet'}
+                                  ? isDowra
+                                    ? `Juz #${progressRecord.puthiyaPadam ?? 1}`
+                                    : `${progressRecord.puthiyaPadam ?? 0} ${(progressRecord.puthiyaPadam ?? 0) === 1 ? 'Line' : 'Lines'}`
+                                  : 'Not recorded yet'}
                             </span>
                           </div>
                         </div>
@@ -395,10 +395,10 @@ export default function ParentHomePageView() {
                                 : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'
                             }`}>
                               {progressRecord
-                                ? progressRecord.isCurrentLessonWrong
-                                  ? '0 Pages (Wrong ❌)'
-                                  : `${progressRecord.juzuPadam || 0} ${(progressRecord.juzuPadam || 0) === 1 ? 'Page' : 'Pages'}`
-                                : 'Not recorded yet'}
+                                  ? progressRecord.isCurrentLessonWrong
+                                    ? '0 Pages (Wrong ❌)'
+                                    : `${progressRecord.juzuPadam ?? 0} ${(progressRecord.juzuPadam ?? 0) === 1 ? 'Page' : 'Pages'}`
+                                  : 'Not recorded yet'}
                             </span>
                           </div>
                         </div>
@@ -421,10 +421,10 @@ export default function ParentHomePageView() {
                                 : 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20'
                             }`}>
                               {progressRecord
-                                ? progressRecord.isPazhayaPadamWrong
-                                  ? '0 Pages (Wrong ❌)'
-                                  : `${progressRecord.pazhayaPadam || 0} ${(progressRecord.pazhayaPadam || 0) === 1 ? 'Page' : 'Pages'}`
-                                : 'Not recorded yet'}
+                                  ? progressRecord.isPazhayaPadamWrong
+                                    ? '0 Pages (Wrong ❌)'
+                                    : `${progressRecord.pazhayaPadam ?? 0} ${(progressRecord.pazhayaPadam ?? 0) === 1 ? 'Page' : 'Pages'}`
+                                  : 'Not recorded yet'}
                             </span>
                           </div>
                         </div>

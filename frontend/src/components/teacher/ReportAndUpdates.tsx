@@ -892,7 +892,7 @@ export default function ReportAndUpdates() {
                                 <span className="text-xl font-black text-gray-900 dark:text-white">
                                   {progressByDate.get(actualSelectedDate).isPuthiyaPadamWrong
                                     ? '0 Lines ❌'
-                                    : `${progressByDate.get(actualSelectedDate).puthiyaPadam || 0} ${(progressByDate.get(actualSelectedDate).puthiyaPadam || 0) === 1 ? 'Line' : 'Lines'}`}
+                                    : `${progressByDate.get(actualSelectedDate).puthiyaPadam ?? 0} ${(progressByDate.get(actualSelectedDate).puthiyaPadam ?? 0) === 1 ? 'Line' : 'Lines'}`}
                                 </span>
                               </div>
                               <div className="flex flex-col items-center bg-blue-50 dark:bg-blue-900/20 p-4 rounded-3xl border border-blue-100 dark:border-blue-800/50">
@@ -902,7 +902,7 @@ export default function ReportAndUpdates() {
                                 <span className="text-xl font-black text-blue-900 dark:text-blue-300">
                                   {progressByDate.get(actualSelectedDate).isCurrentLessonWrong
                                     ? '0 Pages ❌'
-                                    : `${progressByDate.get(actualSelectedDate).juzuPadam || progressByDate.get(actualSelectedDate).juzuNumber || 0} ${(progressByDate.get(actualSelectedDate).juzuPadam || 0) === 1 ? 'Page' : 'Pages'}`}
+                                    : `${progressByDate.get(actualSelectedDate).juzuPadam ?? 0} ${(progressByDate.get(actualSelectedDate).juzuPadam ?? 0) === 1 ? 'Page' : 'Pages'}`}
                                 </span>
                               </div>
                               <div className="flex flex-col items-center bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-3xl border border-emerald-100 dark:border-emerald-800/50">
@@ -912,7 +912,7 @@ export default function ReportAndUpdates() {
                                 <span className="text-xl font-black text-emerald-900 dark:text-emerald-300">
                                   {progressByDate.get(actualSelectedDate).isPazhayaPadamWrong
                                     ? '0 Pages ❌'
-                                    : `${progressByDate.get(actualSelectedDate).pazhayaPadam || 0} ${(progressByDate.get(actualSelectedDate).pazhayaPadam || 0) === 1 ? 'Page' : 'Pages'}`}
+                                    : `${progressByDate.get(actualSelectedDate).pazhayaPadam ?? 0} ${(progressByDate.get(actualSelectedDate).pazhayaPadam ?? 0) === 1 ? 'Page' : 'Pages'}`}
                                 </span>
                               </div>
                             </div>
@@ -984,7 +984,7 @@ export default function ReportAndUpdates() {
                                     Absent
                                   </span>
                                 ) : (
-                                  <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2.5 py-1 rounded-lg border border-emerald-100 dark:border-emerald-900/50 uppercase tracking-wide">
+                                  <span className="text-[10px] font-extrabold text-emerald-600 dark:emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2.5 py-1 rounded-lg border border-emerald-100 dark:border-emerald-900/50 uppercase tracking-wide">
                                     Present
                                   </span>
                                 )}
@@ -997,7 +997,7 @@ export default function ReportAndUpdates() {
                                       <span className="text-sm font-black text-blue-700 dark:text-blue-300 mt-1">
                                         {p.isPuthiyaPadamWrong
                                           ? '0 Lines ❌'
-                                          : `${p.puthiyaPadam || 0} ${(p.puthiyaPadam || 0) === 1 ? 'Line' : 'Lines'}`}
+                                          : `${p.puthiyaPadam ?? 0} ${(p.puthiyaPadam ?? 0) === 1 ? 'Line' : 'Lines'}`}
                                       </span>
                                    </div>
                                    <div className="flex flex-col items-center bg-purple-50 dark:bg-purple-900/20 p-3 rounded-xl border border-purple-100 dark:border-purple-800/50">
@@ -1005,7 +1005,7 @@ export default function ReportAndUpdates() {
                                       <span className="text-sm font-black text-purple-700 dark:text-purple-300 mt-1">
                                         {p.isCurrentLessonWrong
                                           ? '0 Pages ❌'
-                                          : `${p.juzuPadam || p.juzuNumber || 0} ${(p.juzuPadam || 0) === 1 ? 'Page' : 'Pages'}`}
+                                          : `${p.juzuPadam ?? 0} ${(p.juzuPadam ?? 0) === 1 ? 'Page' : 'Pages'}`}
                                       </span>
                                    </div>
                                    <div className="flex flex-col items-center bg-orange-50 dark:bg-orange-900/20 p-3 rounded-xl border border-orange-100 dark:border-orange-800/50">
