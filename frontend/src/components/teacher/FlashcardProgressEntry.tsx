@@ -15,13 +15,16 @@ type StudentDraft = ProgressEntry & {
   rollNumber: string;
 };
 
+const STORAGE_KEY = 'madrasa_teacher_drafts_v1';
+
 const emptyDraft = (student: Student): StudentDraft => {
+  const defaultJuzu = student.todayProgress?.juzuNumber ?? student.currentJuzu ?? 1;
   if (student.todayProgress) {
     return {
       studentId: student._id,
       studentName: student.name,
       rollNumber: student.rollNumber,
-      juzuNumber: student.currentJuzu ?? student.todayProgress.juzuNumber ?? 1,
+      juzuNumber: defaultJuzu,
       puthiyaPadam: student.todayProgress.puthiyaPadam ?? 0,
       juzuPadam: student.todayProgress.juzuPadam ?? 0,
       pazhayaPadam: student.todayProgress.pazhayaPadam ?? 0,
@@ -37,7 +40,7 @@ const emptyDraft = (student: Student): StudentDraft => {
     studentId: student._id,
     studentName: student.name,
     rollNumber: student.rollNumber,
-    juzuNumber: student.currentJuzu ?? 1,
+    juzuNumber: defaultJuzu,
     puthiyaPadam: 0,
     juzuPadam: 0,
     pazhayaPadam: 0,
@@ -82,19 +85,49 @@ export default function FlashcardProgressEntry() {
 
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
+  // SSR-safe load from sessionStorage and draft initialization
   useEffect(() => {
     if (students.length > 0) {
+      let savedDrafts: Record<string, StudentDraft> = {};
+      try {
+        if (typeof window !== 'undefined') {
+          const raw = sessionStorage.getItem(STORAGE_KEY);
+          if (raw) savedDrafts = JSON.parse(raw) || {};
+        }
+      } catch {
+        // Safe fallback
+      }
+
       setDrafts((prev) => {
-        const next: Record<string, StudentDraft> = { ...prev };
+        const next: Record<string, StudentDraft> = {};
         students.forEach((s) => {
-          if (!next[s._id]) {
-            next[s._id] = emptyDraft(s);
-          }
+          const defaultDraft = emptyDraft(s);
+          const savedStudentDraft = savedDrafts[s._id];
+          const existingDraft = prev[s._id];
+
+          next[s._id] = {
+            ...defaultDraft,
+            ...(savedStudentDraft || {}),
+            ...(existingDraft || {}),
+          };
         });
         return next;
       });
     }
   }, [students]);
+
+  // Auto-save drafts to sessionStorage whenever draft state updates
+  useEffect(() => {
+    if (Object.keys(drafts).length > 0) {
+      try {
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem(STORAGE_KEY, JSON.stringify(drafts));
+        }
+      } catch (err) {
+        console.error('Failed to save drafts to sessionStorage:', err);
+      }
+    }
+  }, [drafts]);
 
   const loadStudents = () => {
     queryClient.invalidateQueries({ queryKey: ['teacherStudents'] });
@@ -131,6 +164,13 @@ export default function FlashcardProgressEntry() {
     onSuccess: (result, variables: any) => {
       const total = result.data?.total ?? variables?.entries?.length ?? 0;
       setSuccess(`Submitted ${total} student records successfully.`);
+      try {
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem(STORAGE_KEY);
+        }
+      } catch {
+        // Safe fallback
+      }
       queryClient.invalidateQueries({ queryKey: ['teacherStudents'] });
       queryClient.invalidateQueries({ queryKey: ['teacherClassSummary'] });
       queryClient.invalidateQueries({ queryKey: ['teacherNeedsAttention'] });
@@ -361,10 +401,11 @@ export default function FlashcardProgressEntry() {
           </button>
 
           {/* Absent toggle */}
-          <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-red-100 bg-red-50/60 dark:bg-red-950/30 dark:border-red-900/50 px-3.5 py-2">
+          <label className={`flex cursor-pointer items-center gap-2 rounded-xl border border-red-100 bg-red-50/60 dark:bg-red-950/30 dark:border-red-900/50 px-3.5 py-2 ${currentStudent.status === 'Discontinued' ? 'opacity-50 cursor-not-allowed' : ''}`}>
             <span className="text-xs font-bold text-red-900 dark:text-red-300">Absent</span>
             <input
               type="checkbox"
+              disabled={currentStudent.status === 'Discontinued'}
               checked={currentDraft.isAbsent}
               onChange={(e) =>
                 updateDraft(currentStudent._id, {

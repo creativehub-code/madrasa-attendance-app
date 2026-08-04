@@ -12,13 +12,16 @@ import { getStudentCategory } from '@/lib/studentCategory';
 
 type StudentDraft = ProgressEntry & { studentName: string; rollNumber: string };
 
+const STORAGE_KEY = 'madrasa_teacher_drafts_v1';
+
 const draftFromStudent = (s: Student): StudentDraft => {
+  const defaultJuzu = s.todayProgress?.juzuNumber ?? s.currentJuzu ?? 1;
   if (s.todayProgress) {
     return {
       studentId: s._id,
       studentName: s.name,
       rollNumber: s.rollNumber,
-      juzuNumber: s.currentJuzu ?? s.todayProgress.juzuNumber ?? 1,
+      juzuNumber: defaultJuzu,
       puthiyaPadam: s.todayProgress.puthiyaPadam ?? 0,
       juzuPadam: s.todayProgress.juzuPadam ?? 0,
       pazhayaPadam: s.todayProgress.pazhayaPadam ?? 0,
@@ -34,7 +37,7 @@ const draftFromStudent = (s: Student): StudentDraft => {
     studentId: s._id,
     studentName: s.name,
     rollNumber: s.rollNumber,
-    juzuNumber: s.currentJuzu ?? 1,
+    juzuNumber: defaultJuzu,
     puthiyaPadam: 0,
     juzuPadam: 0,
     pazhayaPadam: 0,
@@ -162,24 +165,49 @@ export default function DataEntryList() {
     []
   );
 
+  // SSR-safe load from sessionStorage and draft initialization
   useEffect(() => {
     if (students.length > 0) {
+      let savedDrafts: Record<string, StudentDraft> = {};
+      try {
+        if (typeof window !== 'undefined') {
+          const raw = sessionStorage.getItem(STORAGE_KEY);
+          if (raw) savedDrafts = JSON.parse(raw) || {};
+        }
+      } catch {
+        // Safe fallback
+      }
+
       setDrafts((prev) => {
-        const next: Record<string, StudentDraft> = { ...prev };
+        const next: Record<string, StudentDraft> = {};
         students.forEach((s) => {
-          if (!next[s._id]) {
-            next[s._id] = draftFromStudent(s);
-          } else {
-            next[s._id] = {
-              ...draftFromStudent(s),
-              ...next[s._id],
-            };
-          }
+          const defaultDraft = draftFromStudent(s);
+          const savedStudentDraft = savedDrafts[s._id];
+          const existingDraft = prev[s._id];
+
+          next[s._id] = {
+            ...defaultDraft,
+            ...(savedStudentDraft || {}),
+            ...(existingDraft || {}),
+          };
         });
         return next;
       });
     }
   }, [students]);
+
+  // Auto-save drafts to sessionStorage whenever draft state updates
+  useEffect(() => {
+    if (Object.keys(drafts).length > 0) {
+      try {
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem(STORAGE_KEY, JSON.stringify(drafts));
+        }
+      } catch (err) {
+        console.error('Failed to save drafts to sessionStorage:', err);
+      }
+    }
+  }, [drafts]);
 
   const loadStudents = () => {
     queryClient.invalidateQueries({ queryKey: ['teacherStudents'] });
@@ -196,6 +224,13 @@ export default function DataEntryList() {
     onSuccess: (result, variables: any) => {
       const total = result.data?.total ?? variables?.entries?.length ?? 0;
       setSuccess(`Submitted ${total} student records successfully.`);
+      try {
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem(STORAGE_KEY);
+        }
+      } catch {
+        // Safe fallback
+      }
       queryClient.invalidateQueries({ queryKey: ['teacherStudents'] });
       queryClient.invalidateQueries({ queryKey: ['teacherClassSummary'] });
       queryClient.invalidateQueries({ queryKey: ['teacherNeedsAttention'] });
@@ -476,7 +511,8 @@ export default function DataEntryList() {
           if (!draft) return null;
 
           const isNeedsRevision = draft.needsRevision && !draft.isAbsent;
-          const isDisabledOverall = draft.isAbsent || isSubmittedToday || student.status === 'Discontinued';
+          const isStudentDisabled = isSubmittedToday || student.status === 'Discontinued';
+          const isDisabledOverall = draft.isAbsent || isStudentDisabled;
 
           return (
           <article
@@ -575,12 +611,12 @@ export default function DataEntryList() {
                 </button>
 
                 {/* Absent toggle */}
-                <label className={`flex flex-col items-end gap-1 ${isDisabledOverall ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
+                <label className={`flex flex-col items-end gap-1 ${isStudentDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
                   <span className="text-xs font-medium text-gray-500">Absent</span>
                   <div className="relative">
                     <input
                       type="checkbox"
-                      disabled={isDisabledOverall}
+                      disabled={isStudentDisabled}
                       className="sr-only"
                       checked={draft.isAbsent}
                       onChange={(e) =>
