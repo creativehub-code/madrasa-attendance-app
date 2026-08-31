@@ -11,6 +11,7 @@ import {
   UserX,
   Users,
   Calendar,
+  BookOpen,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -20,6 +21,7 @@ import {
   markParentReportRead,
   type ParentChild,
 } from '@/lib/api';
+import { getStudentCategory } from '@/lib/studentCategory';
 
 type TabType = 'progress' | 'notices';
 
@@ -106,6 +108,10 @@ export default function ParentReportView() {
   const children: ParentChild[] = childrenData || [];
   const activeChild = children.find((c) => c.id === (selectedChildId || children[0]?.id)) || children[0] || null;
   const activeChildId = activeChild?.id || null;
+  const isQaidaStudent = useMemo(() => {
+    if (!activeChild) return false;
+    return getStudentCategory(activeChild) === 'Noorani Qaida';
+  }, [activeChild]);
 
   // 2. Fetch Monthly Progress
   const {
@@ -418,38 +424,54 @@ export default function ParentReportView() {
                         </div>
 
                         {!progressByDate.get(actualSelectedDate).isAbsent ? (
-                          <div className="grid grid-cols-3 gap-3">
-                            <div className="flex flex-col items-center bg-gray-50 dark:bg-gray-700/50 p-4 rounded-3xl border border-gray-100 dark:border-gray-600">
-                              <span className="text-[11px] text-gray-500 dark:text-gray-400 uppercase font-black tracking-wider mb-2">
-                                Puthiya
+                          (progressByDate.get(actualSelectedDate).category === 'Noorani Qaida' || isQaidaStudent) ? (
+                            <div className="flex flex-col items-center justify-center bg-purple-50 dark:bg-purple-900/20 p-5 rounded-3xl border border-purple-100 dark:border-purple-800/50 text-center w-full">
+                              <span className="text-[11px] text-purple-600 dark:text-purple-400 uppercase font-black tracking-wider mb-1">
+                                Noorani Qaida Lesson
                               </span>
-                              <span className="text-xl font-black text-gray-900 dark:text-white">
-                                {progressByDate.get(actualSelectedDate).isPuthiyaPadamWrong
-                                  ? '0 Lines ❌'
-                                  : `${progressByDate.get(actualSelectedDate).puthiyaPadam ?? 0} ${(progressByDate.get(actualSelectedDate).puthiyaPadam ?? 0) === 1 ? 'Line' : 'Lines'}`}
+                              <span className="text-2xl font-black text-purple-900 dark:text-purple-200">
+                                Lesson #{progressByDate.get(actualSelectedDate).juzuNumber ?? activeChild.currentJuzuNumber ?? 1}
                               </span>
+                              {progressByDate.get(actualSelectedDate).isCurrentLessonWrong && (
+                                <span className="mt-1 text-xs font-bold text-red-600 dark:text-red-400">
+                                  Lesson needs revision ❌
+                                </span>
+                              )}
                             </div>
-                            <div className="flex flex-col items-center bg-blue-50 dark:bg-blue-900/20 p-4 rounded-3xl border border-blue-100 dark:border-blue-800/50">
-                              <span className="text-[11px] text-blue-500 dark:text-blue-400 uppercase font-black tracking-wider mb-2">
-                                Current Lesson
-                              </span>
-                              <span className="text-xl font-black text-blue-900 dark:text-blue-300">
-                                {progressByDate.get(actualSelectedDate).isCurrentLessonWrong
-                                  ? '0 Pages ❌'
-                                  : `${progressByDate.get(actualSelectedDate).juzuPadam ?? 0} ${(progressByDate.get(actualSelectedDate).juzuPadam ?? 0) === 1 ? 'Page' : 'Pages'}`}
-                              </span>
+                          ) : (
+                            <div className="grid grid-cols-3 gap-3">
+                              <div className="flex flex-col items-center bg-gray-50 dark:bg-gray-700/50 p-4 rounded-3xl border border-gray-100 dark:border-gray-600">
+                                <span className="text-[11px] text-gray-500 dark:text-gray-400 uppercase font-black tracking-wider mb-2">
+                                  Puthiya
+                                </span>
+                                <span className="text-xl font-black text-gray-900 dark:text-white">
+                                  {progressByDate.get(actualSelectedDate).isPuthiyaPadamWrong
+                                    ? '0 Lines ❌'
+                                    : `${progressByDate.get(actualSelectedDate).puthiyaPadam ?? 0} ${(progressByDate.get(actualSelectedDate).puthiyaPadam ?? 0) === 1 ? 'Line' : 'Lines'}`}
+                                </span>
+                              </div>
+                              <div className="flex flex-col items-center bg-blue-50 dark:bg-blue-900/20 p-4 rounded-3xl border border-blue-100 dark:border-blue-800/50">
+                                <span className="text-[11px] text-blue-500 dark:text-blue-400 uppercase font-black tracking-wider mb-2">
+                                  Current Lesson
+                                </span>
+                                <span className="text-xl font-black text-blue-900 dark:text-blue-300">
+                                  {progressByDate.get(actualSelectedDate).isCurrentLessonWrong
+                                    ? '0 Pages ❌'
+                                    : `${progressByDate.get(actualSelectedDate).juzuPadam ?? 0} ${(progressByDate.get(actualSelectedDate).juzuPadam ?? 0) === 1 ? 'Page' : 'Pages'}`}
+                                </span>
+                              </div>
+                              <div className="flex flex-col items-center bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-3xl border border-emerald-100 dark:border-emerald-800/50">
+                                <span className="text-[11px] text-emerald-600 dark:text-emerald-400 uppercase font-black tracking-wider mb-2">
+                                  Pazhaya
+                                </span>
+                                <span className="text-xl font-black text-emerald-900 dark:text-emerald-300">
+                                  {progressByDate.get(actualSelectedDate).isPazhayaPadamWrong
+                                    ? '0 Pages ❌'
+                                    : `${progressByDate.get(actualSelectedDate).pazhayaPadam ?? 0} ${(progressByDate.get(actualSelectedDate).pazhayaPadam ?? 0) === 1 ? 'Page' : 'Pages'}`}
+                                </span>
+                              </div>
                             </div>
-                            <div className="flex flex-col items-center bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-3xl border border-emerald-100 dark:border-emerald-800/50">
-                              <span className="text-[11px] text-emerald-600 dark:text-emerald-400 uppercase font-black tracking-wider mb-2">
-                                Pazhaya
-                              </span>
-                              <span className="text-xl font-black text-emerald-900 dark:text-emerald-300">
-                                {progressByDate.get(actualSelectedDate).isPazhayaPadamWrong
-                                  ? '0 Pages ❌'
-                                  : `${progressByDate.get(actualSelectedDate).pazhayaPadam ?? 0} ${(progressByDate.get(actualSelectedDate).pazhayaPadam ?? 0) === 1 ? 'Page' : 'Pages'}`}
-                              </span>
-                            </div>
-                          </div>
+                          )
                         ) : (
                           <div className="flex items-center justify-center gap-2 text-sm font-semibold text-gray-500 dark:text-gray-400 py-6 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
                             <AlertCircle className="h-5 w-5 text-gray-400" />
@@ -532,38 +554,52 @@ export default function ParentReportView() {
                                 </div>
 
                                 {!isAbsent && (
-                                  <div className="grid grid-cols-3 gap-3">
-                                    <div className="flex flex-col items-center bg-blue-50 dark:bg-blue-900/20 p-3 rounded-xl border border-blue-100 dark:border-blue-800/50">
-                                      <span className="text-[9px] text-blue-500 dark:text-blue-400 uppercase font-black tracking-wider">
-                                        Puthiya
-                                      </span>
-                                      <span className="text-sm font-black text-blue-700 dark:text-blue-300 mt-1">
-                                        {p.isPuthiyaPadamWrong
-                                          ? '0 Lines ❌'
-                                          : `${p.puthiyaPadam ?? 0} ${(p.puthiyaPadam ?? 0) === 1 ? 'Line' : 'Lines'}`}
-                                      </span>
-                                    </div>
-                                    <div className="flex flex-col items-center bg-purple-50 dark:bg-purple-900/20 p-3 rounded-xl border border-purple-100 dark:border-purple-800/50">
-                                      <span className="text-[9px] text-purple-500 dark:text-purple-400 uppercase font-black tracking-wider">
-                                        Current Lesson
-                                      </span>
-                                      <span className="text-sm font-black text-purple-700 dark:text-purple-300 mt-1">
-                                        {p.isCurrentLessonWrong
-                                          ? '0 Pages ❌'
-                                          : `${p.juzuPadam ?? 0} ${(p.juzuPadam ?? 0) === 1 ? 'Page' : 'Pages'}`}
+                                  (p.category === 'Noorani Qaida' || isQaidaStudent) ? (
+                                    <div className="flex items-center justify-between bg-purple-50 dark:bg-purple-900/20 p-3.5 px-4 rounded-2xl border border-purple-100 dark:border-purple-800/50">
+                                      <div className="flex items-center gap-2">
+                                        <BookOpen className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                                        <span className="text-xs font-black uppercase tracking-wider text-purple-700 dark:text-purple-300">
+                                          Noorani Qaida Lesson
+                                        </span>
+                                      </div>
+                                      <span className="text-sm font-black text-purple-900 dark:text-purple-100">
+                                        Lesson #{p.juzuNumber ?? activeChild.currentJuzuNumber ?? 1}
                                       </span>
                                     </div>
-                                    <div className="flex flex-col items-center bg-orange-50 dark:bg-orange-900/20 p-3 rounded-xl border border-orange-100 dark:border-orange-800/50">
-                                      <span className="text-[9px] text-orange-600 dark:text-orange-400 uppercase font-black tracking-wider">
-                                        Pazhaya
-                                      </span>
-                                      <span className="text-sm font-black text-orange-700 dark:text-orange-300 mt-1">
-                                        {p.isPazhayaPadamWrong
-                                          ? '0 Pages ❌'
-                                          : `${p.pazhayaPadam ?? 0} ${(p.pazhayaPadam ?? 0) === 1 ? 'Page' : 'Pages'}`}
-                                      </span>
+                                  ) : (
+                                    <div className="grid grid-cols-3 gap-3">
+                                      <div className="flex flex-col items-center bg-blue-50 dark:bg-blue-900/20 p-3 rounded-xl border border-blue-100 dark:border-blue-800/50">
+                                        <span className="text-[9px] text-blue-500 dark:text-blue-400 uppercase font-black tracking-wider">
+                                          Puthiya
+                                        </span>
+                                        <span className="text-sm font-black text-blue-700 dark:text-blue-300 mt-1">
+                                          {p.isPuthiyaPadamWrong
+                                            ? '0 Lines ❌'
+                                            : `${p.puthiyaPadam ?? 0} ${(p.puthiyaPadam ?? 0) === 1 ? 'Line' : 'Lines'}`}
+                                        </span>
+                                      </div>
+                                      <div className="flex flex-col items-center bg-purple-50 dark:bg-purple-900/20 p-3 rounded-xl border border-purple-100 dark:border-purple-800/50">
+                                        <span className="text-[9px] text-purple-500 dark:text-purple-400 uppercase font-black tracking-wider">
+                                          Current Lesson
+                                        </span>
+                                        <span className="text-sm font-black text-purple-700 dark:text-purple-300 mt-1">
+                                          {p.isCurrentLessonWrong
+                                            ? '0 Pages ❌'
+                                            : `${p.juzuPadam ?? 0} ${(p.juzuPadam ?? 0) === 1 ? 'Page' : 'Pages'}`}
+                                        </span>
+                                      </div>
+                                      <div className="flex flex-col items-center bg-orange-50 dark:bg-orange-900/20 p-3 rounded-xl border border-orange-100 dark:border-orange-800/50">
+                                        <span className="text-[9px] text-orange-600 dark:text-orange-400 uppercase font-black tracking-wider">
+                                          Pazhaya
+                                        </span>
+                                        <span className="text-sm font-black text-orange-700 dark:text-orange-300 mt-1">
+                                          {p.isPazhayaPadamWrong
+                                            ? '0 Pages ❌'
+                                            : `${p.pazhayaPadam ?? 0} ${(p.pazhayaPadam ?? 0) === 1 ? 'Page' : 'Pages'}`}
+                                        </span>
+                                      </div>
                                     </div>
-                                  </div>
+                                  )
                                 )}
 
                                 {p.notes && (

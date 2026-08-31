@@ -79,7 +79,7 @@ const getMe = asyncHandler(async (req, res) => {
   let standard = null;
   if (user.role === 'Teacher') {
     const { Student } = require('../models');
-    const assigned = await Student.find({ teacherId: user._id, isActive: true })
+    const assigned = await Student.find({ teacherId: user._id, isActive: true, isDeleted: { $ne: true } })
       .select('standard')
       .limit(1)
       .lean();

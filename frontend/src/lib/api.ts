@@ -376,6 +376,8 @@ export interface AdminStudent {
   className?: string;
   classId?: string | { _id: string; name: string } | null;
   class?: { _id: string; name: string } | null;
+  teacherId?: string | null;
+  parentId?: string | null;
   needsRevision: boolean;
   isActive: boolean;
   status: 'Active' | 'Discontinued';
@@ -398,6 +400,7 @@ export async function fetchAdminStudents(params?: { page?: number; limit?: numbe
 export interface AdminTeacher {
   _id: string;
   name: string;
+  username?: string;
   role?: string;
   standards?: string[];
   assignedClassName?: string;

@@ -32,7 +32,7 @@ const getISTDateBounds = (dateInput) => {
 const getAssignedStudents = asyncHandler(async (req, res) => {
   // RBAC scoping: school teachers see students by assigned standards,
   // madrasa teachers see only their directly-assigned students
-  const filter = { isActive: true };
+  const filter = { isActive: true, isDeleted: { $ne: true } };
   if (req.user.role === 'school_teacher' && req.user.standards?.length > 0) {
     filter.standard = { $in: req.user.standards };
   } else {
@@ -106,7 +106,7 @@ const getAssignedStudents = asyncHandler(async (req, res) => {
 const getTeacherSubmissionStatus = asyncHandler(async (req, res) => {
   const { start: todayStart, end: todayEnd } = getISTDateBounds();
 
-  const filter = { isActive: true };
+  const filter = { isActive: true, isDeleted: { $ne: true } };
   if (req.user.role === 'school_teacher' && req.user.standards?.length > 0) {
     filter.standard = { $in: req.user.standards };
   } else {
@@ -229,7 +229,7 @@ const submitProgress = asyncHandler(async (req, res) => {
 const getClassSummary = asyncHandler(async (req, res) => {
   const { start: todayStart, end: todayEnd } = getISTDateBounds();
 
-  const filter = { isActive: true };
+  const filter = { isActive: true, isDeleted: { $ne: true } };
   if (req.user.role === 'school_teacher' && req.user.standards?.length > 0) {
     filter.standard = { $in: req.user.standards };
   } else {
@@ -272,7 +272,7 @@ const getClassSummary = asyncHandler(async (req, res) => {
 // ─── GET /teacher/needs-attention ─────────────────────────────────────────────
 
 const getNeedsAttention = asyncHandler(async (req, res) => {
-  const filter = { isActive: true };
+  const filter = { isActive: true, isDeleted: { $ne: true } };
   if (req.user.role === 'school_teacher' && req.user.standards?.length > 0) {
     filter.standard = { $in: req.user.standards };
   } else {

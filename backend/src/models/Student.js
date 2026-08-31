@@ -89,6 +89,10 @@ const studentSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
     status: {
       type: String,
       enum: ['Active', 'Discontinued'],
@@ -98,9 +102,9 @@ const studentSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-studentSchema.index({ teacherId: 1, isActive: 1, status: 1 });
-studentSchema.index({ parentId: 1, isActive: 1, status: 1 });
-studentSchema.index({ standard: 1, isActive: 1, status: 1 });
+studentSchema.index({ teacherId: 1, isActive: 1, isDeleted: 1, status: 1 });
+studentSchema.index({ parentId: 1, isActive: 1, isDeleted: 1, status: 1 });
+studentSchema.index({ standard: 1, isActive: 1, isDeleted: 1, status: 1 });
 
 const Student = mongoose.model('Student', studentSchema);
 module.exports = Student;

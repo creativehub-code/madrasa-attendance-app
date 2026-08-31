@@ -196,9 +196,12 @@ export default function CreateStudentModal({
     onSuccess: (res) => {
       setCreatedCredentials(res.data);
       queryClient.invalidateQueries({ queryKey: ['adminStudents'] });
+      queryClient.invalidateQueries({ queryKey: ['adminTeachers'] });
       queryClient.invalidateQueries({ queryKey: ['adminStats'] });
       queryClient.invalidateQueries({ queryKey: ['adminSections'] });
       queryClient.invalidateQueries({ queryKey: ['adminParents'] });
+      queryClient.invalidateQueries({ queryKey: ['teacherStudents'] });
+      queryClient.invalidateQueries({ queryKey: ['teacherClassSummary'] });
       if (onSuccess) {
         onSuccess();
       }

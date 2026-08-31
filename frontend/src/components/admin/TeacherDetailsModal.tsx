@@ -147,6 +147,7 @@ export default function TeacherDetailsModal({ teacher, onClose }: TeacherDetails
     onSuccess: (res) => {
       showToast(res.data.message || 'Teacher terminated successfully');
       queryClient.invalidateQueries({ queryKey: ['adminTeachers'] });
+      queryClient.invalidateQueries({ queryKey: ['adminStats'] });
       queryClient.invalidateQueries({ queryKey: ['teacherStudents', teacher._id] });
       setConfirmAction(null);
       setTimeout(onClose, 1500);

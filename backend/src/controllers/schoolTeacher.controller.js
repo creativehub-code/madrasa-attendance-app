@@ -27,7 +27,7 @@ const getEndOfDay = (d = new Date()) => {
  */
 const getClassesAndStudents = asyncHandler(async (req, res) => {
   // Scope by teacher's assigned standards if available
-  const filter = { isActive: true };
+  const filter = { isActive: true, isDeleted: { $ne: true } };
   if (req.user.role === 'school_teacher' && req.user.standards?.length > 0) {
     filter.standard = { $in: req.user.standards };
   }

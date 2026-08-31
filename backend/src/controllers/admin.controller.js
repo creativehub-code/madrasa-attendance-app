@@ -312,13 +312,13 @@ const getStats = asyncHandler(async (req, res) => {
 
   // All four queries run concurrently.
   // countDocuments() uses MongoDB's index-backed count — O(1) with a proper
-  // compound index on {isActive, role} rather than fetching full documents.
+  // compound index on {role, isActive, isDeleted} rather than fetching full documents.
   const [totalStudents, totalTeachers, totalParents, todayProgressRecords] =
     await Promise.all([
-      Student.countDocuments({ isActive: true }),         // Student model
-      User.countDocuments({ role: 'Teacher', isActive: true }),  // User model (Teacher role)
-      User.countDocuments({ role: 'Parent', isActive: true }),   // User model (Parent role)
-      Progress.find({ date: { $gte: todayStart, $lte: todayEnd } })
+      Student.countDocuments({ isActive: true, isDeleted: { $ne: true } }),
+      User.countDocuments({ role: { $in: ['Teacher', 'school_teacher'] }, isActive: true, isDeleted: { $ne: true } }),
+      User.countDocuments({ role: 'Parent', isActive: true, isDeleted: { $ne: true } }),
+      Progress.find({ date: { $gte: todayStart, $lte: todayEnd } }),
     ]);
 
   const totalAttendeesToday = todayProgressRecords.length;
@@ -369,6 +369,8 @@ const getStudents = asyncHandler(async (req, res) => {
     const classObjName = s.classId && typeof s.classId === 'object' ? s.classId.name : null;
     const finalClassName = classObjName || s.className || '';
     const finalClassId = s.classId && typeof s.classId === 'object' ? s.classId._id : s.classId || null;
+    const finalTeacherId = s.teacherId && typeof s.teacherId === 'object' ? s.teacherId._id : s.teacherId || null;
+    const finalParentId = s.parentId && typeof s.parentId === 'object' ? s.parentId._id : s.parentId || null;
 
     return {
       _id: s._id,
@@ -379,6 +381,8 @@ const getStudents = asyncHandler(async (req, res) => {
       className: finalClassName,
       classId: finalClassId,
       class: classObjName ? { _id: s.classId._id, name: s.classId.name } : null,
+      teacherId: finalTeacherId,
+      parentId: finalParentId,
       needsRevision: s.needsRevision,
       isActive: s.isActive,
       status: s.status,
@@ -410,10 +414,13 @@ const updateStudent = asyncHandler(async (req, res) => {
   if (status && ['Active', 'Discontinued'].includes(status)) {
     student.status = status;
   }
-  if (teacherId) {
+  if (teacherId !== undefined && teacherId !== '') {
+    if (!mongoose.Types.ObjectId.isValid(teacherId)) {
+      throw new AppError('Invalid teacherId format', 400);
+    }
     const teacher = await User.findOne({ _id: teacherId, role: { $in: ['Teacher', 'school_teacher'] }, isActive: true });
     if (!teacher) throw new AppError('Selected teacher not found or is inactive', 404);
-    student.teacherId = teacherId;
+    student.teacherId = teacher._id;
   }
 
   if (classId !== undefined) {
@@ -446,20 +453,51 @@ const deleteStudent = asyncHandler(async (req, res) => {
   const { id } = req.params;
   
   const student = await Student.findById(id);
-  if (!student) throw new AppError('Student not found', 404);
+  if (!student || !student.isActive || student.isDeleted) {
+    throw new AppError('Student not found', 404);
+  }
 
+  // 1. Soft delete the target student
   student.isActive = false;
+  student.isDeleted = true;
+  student.status = 'Discontinued';
   await student.save();
+
+  let parentDeleted = false;
+
+  // 2. Check if parent exists and has any remaining active students
+  if (student.parentId) {
+    const remainingActiveStudents = await Student.countDocuments({
+      parentId: student.parentId,
+      _id: { $ne: student._id },
+      isActive: true,
+      isDeleted: { $ne: true },
+    });
+
+    // 3. Cascade delete parent only if NO other active students exist
+    if (remainingActiveStudents === 0) {
+      await User.findByIdAndUpdate(student.parentId, {
+        isActive: false,
+        isDeleted: true,
+      });
+      parentDeleted = true;
+    }
+  }
 
   await logActivity({
     actionType: 'STUDENT_DELETED',
-    message: `Admin soft deleted student: ${student.name} (${student.admissionNumber})`,
+    message: `Admin soft deleted student: ${student.name} (${student.admissionNumber})${
+      parentDeleted ? ' and associated parent account' : ''
+    }`,
     performedById: req.user?._id,
   });
 
   res.json({
     success: true,
-    data: { message: 'Student deleted successfully' },
+    data: {
+      message: 'Student deleted successfully',
+      parentDeleted,
+    },
   });
 });
 
@@ -559,7 +597,7 @@ const getTeachers = asyncHandler(async (req, res) => {
   // 1. School Teachers: Count active students whose standard is in the teacher's standards array.
   // 2. Madrasa Teachers: Count active students assigned to teacherId or matching assignedClass.
   const studentCountPromises = teachers.map(async (t) => {
-    let filter = { isActive: true };
+    let filter = { isActive: true, isDeleted: { $ne: true } };
 
     if (t.role === 'school_teacher') {
       if (t.standards && t.standards.length > 0) {
@@ -608,6 +646,7 @@ const getTeachers = asyncHandler(async (req, res) => {
     return {
       _id: t._id,
       name: t.username,
+      username: t.username,
       role: t.role,
       studentCount: studentCounts[index] || 0,
       // School Teachers: standards from User document
@@ -922,7 +961,7 @@ const getTeacherStudents = asyncHandler(async (req, res) => {
   if (!teacher) throw new AppError('Teacher not found', 404);
 
   // Build filter: school teachers scoped by standards, madrasa teachers by teacherId
-  const filter = { isActive: true };
+  const filter = { isActive: true, isDeleted: { $ne: true } };
   if (teacher.role === 'school_teacher' && teacher.standards?.length > 0) {
     filter.standard = { $in: teacher.standards };
   } else {

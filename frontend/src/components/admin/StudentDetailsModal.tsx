@@ -20,9 +20,10 @@ interface StudentDetailsModalProps {
   teachers: AdminTeacher[];
   classes?: ClassItem[];
   sections?: string[];
+  onSuccess?: () => void;
 }
 
-export default function StudentDetailsModal({ student, onClose, teachers, classes: passedClasses, sections: passedSections }: StudentDetailsModalProps) {
+export default function StudentDetailsModal({ student, onClose, teachers, classes: passedClasses, sections: passedSections, onSuccess }: StudentDetailsModalProps) {
   const { darkMode } = useAdminTheme();
   const queryClient = useQueryClient();
 
@@ -67,7 +68,23 @@ export default function StudentDetailsModal({ student, onClose, teachers, classe
   const [name, setName] = useState(student.name);
   const [standard, setStandard] = useState(student.standard || '1st Standard');
   const [status, setStatus] = useState<string>(student.status || 'Active');
-  const [teacherId, setTeacherId] = useState(teachers.find(t => t.name === student.teacherUsername)?._id || '');
+
+  const getInitialTeacherId = () => {
+    if (typeof student.teacherId === 'object' && student.teacherId !== null) return (student.teacherId as any)._id;
+    if (student.teacherId) return String(student.teacherId);
+    if (student.teacherUsername && teachers.length > 0) {
+      const match = teachers.find(
+        (t) =>
+          t._id === (student as any).teacherId ||
+          t.username === student.teacherUsername ||
+          t.name === student.teacherUsername
+      );
+      if (match) return match._id;
+    }
+    return '';
+  };
+
+  const [teacherId, setTeacherId] = useState<string>(getInitialTeacherId);
 
   const getInitialClassId = () => {
     if (typeof student.classId === 'object' && student.classId !== null) return student.classId._id;
@@ -87,6 +104,13 @@ export default function StudentDetailsModal({ student, onClose, teachers, classe
       if (match) setClassId(match._id);
     }
   }, [availableClasses, student.className, classId]);
+
+  useEffect(() => {
+    if (!teacherId && teachers.length > 0) {
+      const init = getInitialTeacherId();
+      if (init) setTeacherId(init);
+    }
+  }, [teachers, student]);
 
   // Danger state
   const [confirmName, setConfirmName] = useState('');
@@ -127,7 +151,14 @@ export default function StudentDetailsModal({ student, onClose, teachers, classe
     onSuccess: () => {
       showToast('Student updated successfully');
       queryClient.invalidateQueries({ queryKey: ['adminStudents'] });
+      queryClient.invalidateQueries({ queryKey: ['adminTeachers'] });
+      queryClient.invalidateQueries({ queryKey: ['teacherStudents'] });
+      queryClient.invalidateQueries({ queryKey: ['teacherClassSummary'] });
       queryClient.invalidateQueries({ queryKey: ['adminSections'] });
+      queryClient.invalidateQueries({ queryKey: ['classes'] });
+      if (onSuccess) {
+        onSuccess();
+      }
     },
     onError: (err: any) => showToast(err.message || 'Failed to update', 'error'),
   });
@@ -140,7 +171,11 @@ export default function StudentDetailsModal({ student, onClose, teachers, classe
       setStatus(nextStatus);
       showToast(`Student status changed to ${nextStatus}`);
       queryClient.invalidateQueries({ queryKey: ['adminStudents'] });
+      queryClient.invalidateQueries({ queryKey: ['adminStats'] });
+      queryClient.invalidateQueries({ queryKey: ['adminParents'] });
+      queryClient.invalidateQueries({ queryKey: ['adminTeachers'] });
       queryClient.invalidateQueries({ queryKey: ['teacherStudents'] });
+      queryClient.invalidateQueries({ queryKey: ['teacherClassSummary'] });
     },
     onError: (err: any) => showToast(err.message || 'Failed to update status', 'error'),
   });
@@ -150,6 +185,15 @@ export default function StudentDetailsModal({ student, onClose, teachers, classe
     onSuccess: () => {
       showToast('Student deleted');
       queryClient.invalidateQueries({ queryKey: ['adminStudents'] });
+      queryClient.invalidateQueries({ queryKey: ['adminStats'] });
+      queryClient.invalidateQueries({ queryKey: ['adminParents'] });
+      queryClient.invalidateQueries({ queryKey: ['adminTeachers'] });
+      queryClient.invalidateQueries({ queryKey: ['teacherStudents'] });
+      queryClient.invalidateQueries({ queryKey: ['teacherClassSummary'] });
+      queryClient.invalidateQueries({ queryKey: ['adminSections'] });
+      if (onSuccess) {
+        onSuccess();
+      }
       setTimeout(onClose, 1000);
     },
     onError: (err: any) => showToast(err.message || 'Failed to delete', 'error'),
