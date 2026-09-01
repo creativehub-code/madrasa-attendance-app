@@ -13,6 +13,9 @@ import { getStudentCategory } from '@/lib/studentCategory';
 type StudentDraft = ProgressEntry & {
   studentName: string;
   rollNumber: string;
+  isPuthiyaPadamNotGiven: boolean;
+  isJuzuPadamNotGiven: boolean;
+  isPazhayaPadamNotGiven: boolean;
 };
 
 const STORAGE_KEY = 'madrasa_teacher_drafts_v1';
@@ -33,6 +36,9 @@ const emptyDraft = (student: Student): StudentDraft => {
       isPazhayaPadamWrong: Boolean(student.todayProgress.isPazhayaPadamWrong),
       isAbsent: Boolean(student.todayProgress.isAbsent),
       needsRevision: Boolean(student.todayProgress.needsRevision),
+      isPuthiyaPadamNotGiven: Boolean(student.todayProgress.isPuthiyaPadamNotGiven),
+      isJuzuPadamNotGiven: Boolean(student.todayProgress.isJuzuPadamNotGiven),
+      isPazhayaPadamNotGiven: Boolean(student.todayProgress.isPazhayaPadamNotGiven),
       notes: student.todayProgress.notes || '',
     };
   }
@@ -49,6 +55,9 @@ const emptyDraft = (student: Student): StudentDraft => {
     isPazhayaPadamWrong: false,
     isAbsent: false,
     needsRevision: false,
+    isPuthiyaPadamNotGiven: false,
+    isJuzuPadamNotGiven: false,
+    isPazhayaPadamNotGiven: false,
     notes: '',
   };
 };
@@ -244,6 +253,9 @@ export default function FlashcardProgressEntry() {
           isPuthiyaPadamWrong: Boolean(draft.isPuthiyaPadamWrong),
           isCurrentLessonWrong: Boolean(draft.isCurrentLessonWrong),
           isPazhayaPadamWrong: Boolean(draft.isPazhayaPadamWrong),
+          isPuthiyaPadamNotGiven: Boolean(draft.isPuthiyaPadamNotGiven),
+          isJuzuPadamNotGiven: Boolean(draft.isJuzuPadamNotGiven),
+          isPazhayaPadamNotGiven: Boolean(draft.isPazhayaPadamNotGiven),
           notes: draft.notes?.trim() || undefined,
         };
       }
@@ -337,6 +349,11 @@ export default function FlashcardProgressEntry() {
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">{currentDraft.studentName}</h2>
+              {currentStudent.currentJuzu && (
+                <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs rounded-full border border-gray-200 dark:border-gray-700">
+                  Juzz {currentStudent.currentJuzu}
+                </span>
+              )}
               {currentStudent.status === 'Discontinued' && (
                 <span className="px-2.5 py-0.5 bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 text-[10px] font-bold rounded-full border border-amber-300 dark:border-amber-700">
                   Discontinued
@@ -465,6 +482,14 @@ export default function FlashcardProgressEntry() {
                         ...(nextState ? { puthiyaPadam: 0 } : {}),
                       });
                     }}
+                    isNotGiven={Boolean(currentDraft.isPuthiyaPadamNotGiven)}
+                    onToggleNotGiven={() => {
+                      const nextState = !currentDraft.isPuthiyaPadamNotGiven;
+                      updateDraft(currentStudent._id, {
+                        isPuthiyaPadamNotGiven: nextState,
+                        ...(nextState ? { puthiyaPadam: 0 } : {}),
+                      });
+                    }}
                     quickChips={
                       isDowra
                         ? [
@@ -497,6 +522,14 @@ export default function FlashcardProgressEntry() {
                         ...(nextState ? { juzuPadam: 0 } : {}),
                       });
                     }}
+                    isNotGiven={Boolean(currentDraft.isJuzuPadamNotGiven)}
+                    onToggleNotGiven={() => {
+                      const nextState = !currentDraft.isJuzuPadamNotGiven;
+                      updateDraft(currentStudent._id, {
+                        isJuzuPadamNotGiven: nextState,
+                        ...(nextState ? { juzuPadam: 0 } : {}),
+                      });
+                    }}
                     quickChips={[
                       { label: '5 Pages', value: 5 },
                       { label: '10 Pages', value: 10 },
@@ -516,6 +549,14 @@ export default function FlashcardProgressEntry() {
                       const nextState = !currentDraft.isPazhayaPadamWrong;
                       updateDraft(currentStudent._id, {
                         isPazhayaPadamWrong: nextState,
+                        ...(nextState ? { pazhayaPadam: 0 } : {}),
+                      });
+                    }}
+                    isNotGiven={Boolean(currentDraft.isPazhayaPadamNotGiven)}
+                    onToggleNotGiven={() => {
+                      const nextState = !currentDraft.isPazhayaPadamNotGiven;
+                      updateDraft(currentStudent._id, {
+                        isPazhayaPadamNotGiven: nextState,
                         ...(nextState ? { pazhayaPadam: 0 } : {}),
                       });
                     }}

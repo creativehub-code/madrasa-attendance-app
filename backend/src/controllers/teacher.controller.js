@@ -180,6 +180,9 @@ const submitProgress = asyncHandler(async (req, res) => {
 
   const operations = entries.map((entry) => {
     const isAbsent = Boolean(entry.isAbsent);
+    const isPuthiyaPadamNotGiven = Boolean(entry.isPuthiyaPadamNotGiven);
+    const isJuzuPadamNotGiven = Boolean(entry.isJuzuPadamNotGiven);
+    const isPazhayaPadamNotGiven = Boolean(entry.isPazhayaPadamNotGiven);
 
     return {
       updateOne: {
@@ -190,17 +193,20 @@ const submitProgress = asyncHandler(async (req, res) => {
             teacherId: req.user._id,
             date: progressDate,
             juzuNumber: entry.juzuNumber ?? 1,
-            puthiyaPadam: isAbsent ? 0 : (entry.puthiyaPadam ?? 0),
+            puthiyaPadam: isAbsent || isPuthiyaPadamNotGiven ? 0 : (entry.puthiyaPadam ?? 0),
             unit: 'lines',
-            juzuPadam: isAbsent ? 0 : (entry.juzuPadam ?? 0),
-            pazhayaPadam: isAbsent ? 0 : (entry.pazhayaPadam ?? 0),
+            juzuPadam: isAbsent || isJuzuPadamNotGiven ? 0 : (entry.juzuPadam ?? 0),
+            pazhayaPadam: isAbsent || isPazhayaPadamNotGiven ? 0 : (entry.pazhayaPadam ?? 0),
             dowraCount: entry.dowraCount ?? 0,
             category: entry.category || 'Regular',
             isAbsent,
             needsRevision: isAbsent ? false : Boolean(entry.needsRevision),
-            isPuthiyaPadamWrong: isAbsent ? false : Boolean(entry.isPuthiyaPadamWrong),
-            isCurrentLessonWrong: isAbsent ? false : Boolean(entry.isCurrentLessonWrong),
-            isPazhayaPadamWrong: isAbsent ? false : Boolean(entry.isPazhayaPadamWrong),
+            isPuthiyaPadamWrong: isAbsent || isPuthiyaPadamNotGiven ? false : Boolean(entry.isPuthiyaPadamWrong),
+            isCurrentLessonWrong: isAbsent || isJuzuPadamNotGiven ? false : Boolean(entry.isCurrentLessonWrong),
+            isPazhayaPadamWrong: isAbsent || isPazhayaPadamNotGiven ? false : Boolean(entry.isPazhayaPadamWrong),
+            isPuthiyaPadamNotGiven,
+            isJuzuPadamNotGiven,
+            isPazhayaPadamNotGiven,
             notes: entry.notes?.trim() || '',
             isLocked: true,
           },

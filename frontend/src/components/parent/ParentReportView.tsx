@@ -447,6 +447,8 @@ export default function ParentReportView() {
                                 <span className="text-xl font-black text-gray-900 dark:text-white">
                                   {progressByDate.get(actualSelectedDate).isPuthiyaPadamWrong
                                     ? '0 Lines ❌'
+                                    : progressByDate.get(actualSelectedDate).isPuthiyaPadamNotGiven
+                                    ? 'Not Given (തന്നില്ല)'
                                     : `${progressByDate.get(actualSelectedDate).puthiyaPadam ?? 0} ${(progressByDate.get(actualSelectedDate).puthiyaPadam ?? 0) === 1 ? 'Line' : 'Lines'}`}
                                 </span>
                               </div>
@@ -457,6 +459,8 @@ export default function ParentReportView() {
                                 <span className="text-xl font-black text-blue-900 dark:text-blue-300">
                                   {progressByDate.get(actualSelectedDate).isCurrentLessonWrong
                                     ? '0 Pages ❌'
+                                    : progressByDate.get(actualSelectedDate).isJuzuPadamNotGiven
+                                    ? 'Not Given (തന്നില്ല)'
                                     : `${progressByDate.get(actualSelectedDate).juzuPadam ?? 0} ${(progressByDate.get(actualSelectedDate).juzuPadam ?? 0) === 1 ? 'Page' : 'Pages'}`}
                                 </span>
                               </div>
@@ -467,6 +471,8 @@ export default function ParentReportView() {
                                 <span className="text-xl font-black text-emerald-900 dark:text-emerald-300">
                                   {progressByDate.get(actualSelectedDate).isPazhayaPadamWrong
                                     ? '0 Pages ❌'
+                                    : progressByDate.get(actualSelectedDate).isPazhayaPadamNotGiven
+                                    ? 'Not Given (തന്നില്ല)'
                                     : `${progressByDate.get(actualSelectedDate).pazhayaPadam ?? 0} ${(progressByDate.get(actualSelectedDate).pazhayaPadam ?? 0) === 1 ? 'Page' : 'Pages'}`}
                                 </span>
                               </div>

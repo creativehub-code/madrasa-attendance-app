@@ -77,6 +77,18 @@ const progressSchema = new mongoose.Schema(
       default: '',
       maxlength: 500,
     },
+    isPuthiyaPadamNotGiven: {
+      type: Boolean,
+      default: false,
+    },
+    isJuzuPadamNotGiven: {
+      type: Boolean,
+      default: false,
+    },
+    isPazhayaPadamNotGiven: {
+      type: Boolean,
+      default: false,
+    },
     isLocked: {
       type: Boolean,
       default: true,

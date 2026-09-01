@@ -13,6 +13,7 @@ const ExamMark = require('./ExamMark');
 const Syllabus = require('./Syllabus');
 
 const Class = require('./Class');
+const Holiday = require('./Holiday');
 
 module.exports = {
   User,
@@ -29,4 +30,5 @@ module.exports = {
   ExamMark,
   Syllabus,
   Class,
+  Holiday,
 };

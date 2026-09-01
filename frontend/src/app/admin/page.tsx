@@ -17,11 +17,11 @@ import {
   Check,
   FileText,
   RefreshCw,
-  Loader2,
   Mail,
   MailOpen,
   LucideIcon,
   Plus,
+  CalendarDays,
 } from 'lucide-react';
 import { useAdminTheme } from '@/context/AdminThemeContext';
 import { STANDARDS } from '@/types';
@@ -37,11 +37,12 @@ import {
   type AdminTeacher,
   type AdminActivity,
   fetchAdminReports,
-  markAdminReportRead,
   type IssueReport,
   fetchClasses,
   createClass,
   type ClassItem,
+  createHoliday,
+  markAdminReportRead,
 } from '@/lib/api';
 import CreateStudentModal from '@/components/admin/CreateStudentModal';
 
@@ -64,7 +65,7 @@ function formatRelativeTime(dateString?: string): string {
 // dashboard page was loading the teachers list for the Add-Student modal
 // before the modal was even opened. That is fixed below.
 
-type ModalType = 'student' | 'teacher' | 'announcement' | 'reports' | null;
+type ModalType = 'student' | 'teacher' | 'announcement' | 'reports' | 'holiday' | null;
 
 interface StatCard {
   label: string;
@@ -78,7 +79,7 @@ const QUICK_ACTIONS = [
   { id: 'student', label: 'Add Student', shortLabel: 'Add Student', icon: UserPlus },
   { id: 'teacher', label: 'Add Teacher', shortLabel: 'Add Teacher', icon: UserCheck },
   { id: 'announcement', label: 'Send Announcement', shortLabel: 'Announcement', icon: Megaphone },
-  { id: 'reports', label: 'View Reports', shortLabel: 'Reports', icon: BarChart3 },
+  { id: 'holiday', label: 'Manage Holidays', shortLabel: 'Holidays', icon: CalendarDays },
 ] as const;
 
 export default function AdminDashboardPage() {
@@ -191,6 +192,10 @@ export default function AdminDashboardPage() {
   const [announcementAudience, setAnnouncementAudience] = useState('All Parents & Staff');
   const [announcementPriority, setAnnouncementPriority] = useState('Normal');
 
+  const [holidayTitle, setHolidayTitle] = useState('Madrasa Holiday');
+  const [holidayStartDate, setHolidayStartDate] = useState('');
+  const [holidayEndDate, setHolidayEndDate] = useState('');
+
   const today = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'short',
@@ -247,6 +252,21 @@ export default function AdminDashboardPage() {
     },
   });
 
+  const holidayMutation = useMutation({
+    mutationFn: createHoliday,
+    onSuccess: () => {
+      setActiveModal(null);
+      setHolidayTitle('Madrasa Holiday');
+      setHolidayStartDate('');
+      setHolidayEndDate('');
+      showNotification('Global holiday created successfully!');
+    },
+    onError: (err) => {
+      console.error('[Admin] createHoliday failed:', err);
+      showNotification('Failed to create holiday. Please try again.');
+    },
+  });
+
   // ── Form Handlers ────────────────────────────────────────────────────────────
   const handleAnnouncementSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -258,7 +278,15 @@ export default function AdminDashboardPage() {
     });
   };
 
-
+  const handleHolidaySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    holidayMutation.mutate({
+      title: holidayTitle,
+      startDate: holidayStartDate,
+      endDate: holidayEndDate,
+      isGlobal: true,
+    });
+  };
 
   const handleTeacherSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -490,11 +518,13 @@ export default function AdminDashboardPage() {
                   {activeModal === 'teacher' && <UserCheck className="h-5 w-5" />}
                   {activeModal === 'announcement' && <Megaphone className="h-5 w-5" />}
                   {activeModal === 'reports' && <BarChart3 className="h-5 w-5" />}
+                  {activeModal === 'holiday' && <CalendarDays className="h-5 w-5" />}
                 </div>
                 <h3 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                   {activeModal === 'teacher' && 'Create New Teacher'}
                   {activeModal === 'announcement' && 'Send Announcement'}
                   {activeModal === 'reports' && 'Brief of Reports'}
+                  {activeModal === 'holiday' && 'Manage Global Holiday'}
                 </h3>
               </div>
               <button
@@ -666,6 +696,66 @@ export default function AdminDashboardPage() {
                 </div>
               </form>
             )}
+
+            {/* Manage Global Holiday */}
+            {activeModal === 'holiday' && (
+              <form onSubmit={handleHolidaySubmit} className="flex flex-col gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Holiday Title</label>
+                  <input
+                    required
+                    type="text"
+                    value={holidayTitle}
+                    onChange={(e) => setHolidayTitle(e.target.value)}
+                    placeholder="e.g. Eid al-Fitr"
+                    className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-2.5 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus:border-madrasa-500 dark:focus:border-madrasa-400 focus:bg-white dark:focus:bg-gray-900 transition"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Start Date</label>
+                    <input
+                      required
+                      type="date"
+                      value={holidayStartDate}
+                      onChange={(e) => setHolidayStartDate(e.target.value)}
+                      className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-2.5 text-sm text-gray-900 dark:text-white outline-none focus:border-madrasa-500 dark:focus:border-madrasa-400 focus:bg-white dark:focus:bg-gray-900 transition"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">End Date</label>
+                    <input
+                      required
+                      type="date"
+                      value={holidayEndDate}
+                      onChange={(e) => setHolidayEndDate(e.target.value)}
+                      className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-2.5 text-sm text-gray-900 dark:text-white outline-none focus:border-madrasa-500 dark:focus:border-madrasa-400 focus:bg-white dark:focus:bg-gray-900 transition"
+                    />
+                  </div>
+                </div>
+                <div className="mt-2 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveModal(null)}
+                    className={`rounded-xl px-4 py-2.5 text-xs font-semibold transition ${
+                      darkMode ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={holidayMutation.isPending}
+                    className="flex items-center gap-1.5 rounded-xl bg-madrasa-700 px-5 py-2.5 text-xs font-semibold text-white shadow hover:bg-madrasa-800 transition disabled:opacity-60"
+                  >
+                    {holidayMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    Create Holiday
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Brief of Reports */}
             {activeModal === 'reports' && (
               <div className="flex flex-col gap-4">
                 <div className="grid grid-cols-2 gap-2.5">

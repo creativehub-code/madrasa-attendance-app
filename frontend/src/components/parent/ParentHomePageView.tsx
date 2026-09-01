@@ -22,8 +22,10 @@ import {
   fetchParentChildren,
   fetchParentDailyProgress,
   fetchParentAnnouncements,
+  fetchHolidays,
   type ParentChild,
 } from '@/lib/api';
+import type { Holiday } from '@/types';
 import { getStudentCategory } from '@/lib/studentCategory';
 import { formatFraction } from '@/components/teacher/StepperField';
 
@@ -77,6 +79,27 @@ export default function ParentHomePageView() {
     },
     staleTime: 5 * 60 * 1000,
   });
+
+  // 4. Fetch Holidays
+  const { data: holidaysData } = useQuery({
+    queryKey: ['holidays', todayDateStr],
+    queryFn: async () => {
+      const res = await fetchHolidays();
+      return res.data.holidays;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  
+  const holidays: Holiday[] = holidaysData || [];
+  const today = new Date();
+  const activeHoliday = holidays.find(h => {
+    const start = new Date(h.startDate);
+    const end = new Date(h.endDate);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+    return today >= start && today <= end && (h.isGlobal || h.classId === activeChild?.classId);
+  });
+
 
   const todayDateStr = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
@@ -166,6 +189,16 @@ export default function ParentHomePageView() {
           <span>Live Sync</span>
         </span>
       </div>
+
+      {activeHoliday && (
+        <div className="mx-1 mt-2 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 p-4 shadow-lg shadow-orange-500/20 text-white flex items-center justify-between">
+          <div>
+            <h3 className="font-bold text-sm">Today is a {activeHoliday.isGlobal ? 'Global Holiday' : 'Class Holiday'}</h3>
+            <p className="text-xs font-medium text-orange-100">{activeHoliday.title}</p>
+          </div>
+          <Sparkles className="h-5 w-5 text-orange-200" />
+        </div>
+      )}
 
       {/* ── 1. ACTIVE STUDENT HEADER (One-Line Header) ──────────────────────────── */}
       <header className="flex items-center justify-between gap-3 px-1 py-1">
@@ -354,12 +387,14 @@ export default function ParentHomePageView() {
                           </div>
                           <div>
                             <span className={`inline-block rounded-full px-3 py-0.5 text-xs font-bold ${
-                              needsRevision || progressRecord?.isPuthiyaPadamWrong
+                              needsRevision || progressRecord?.isPuthiyaPadamWrong || progressRecord?.isPuthiyaPadamNotGiven
                                 ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
                                 : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
                             }`}>
                               {progressRecord?.isPuthiyaPadamWrong
                                 ? '0 Lines (Wrong ❌)'
+                                : progressRecord?.isPuthiyaPadamNotGiven
+                                ? 'Not Given (തന്നില്ല)'
                                 : needsRevision
                                 ? '0 Lines (Locked)'
                                 : progressRecord
@@ -390,13 +425,15 @@ export default function ParentHomePageView() {
                           </div>
                           <div>
                             <span className={`inline-block rounded-full px-3 py-0.5 text-xs font-bold ${
-                              progressRecord?.isCurrentLessonWrong
+                              progressRecord?.isCurrentLessonWrong || progressRecord?.isJuzuPadamNotGiven
                                 ? 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20'
                                 : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'
                             }`}>
                               {progressRecord
                                   ? progressRecord.isCurrentLessonWrong
                                     ? '0 Pages (Wrong ❌)'
+                                    : progressRecord.isJuzuPadamNotGiven
+                                    ? 'Not Given (തന്നില്ല)'
                                     : `${progressRecord.juzuPadam ?? 0} ${(progressRecord.juzuPadam ?? 0) === 1 ? 'Page' : 'Pages'}`
                                   : 'Not recorded yet'}
                             </span>
@@ -416,13 +453,15 @@ export default function ParentHomePageView() {
                           </div>
                           <div>
                             <span className={`inline-block rounded-full px-3 py-0.5 text-xs font-bold ${
-                              progressRecord?.isPazhayaPadamWrong
+                              progressRecord?.isPazhayaPadamWrong || progressRecord?.isPazhayaPadamNotGiven
                                 ? 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20'
                                 : 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20'
                             }`}>
                               {progressRecord
                                   ? progressRecord.isPazhayaPadamWrong
                                     ? '0 Pages (Wrong ❌)'
+                                    : progressRecord.isPazhayaPadamNotGiven
+                                    ? 'Not Given (തന്നില്ല)'
                                     : `${progressRecord.pazhayaPadam ?? 0} ${(progressRecord.pazhayaPadam ?? 0) === 1 ? 'Page' : 'Pages'}`
                                   : 'Not recorded yet'}
                             </span>

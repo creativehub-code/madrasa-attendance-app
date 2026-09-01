@@ -99,6 +99,12 @@ const progressEntrySchema = z.object({
 
   isPazhayaPadamWrong: z.boolean({ invalid_type_error: 'isPazhayaPadamWrong must be a boolean' }).optional(),
 
+  isPuthiyaPadamNotGiven: z.boolean({ invalid_type_error: 'isPuthiyaPadamNotGiven must be a boolean' }).optional(),
+
+  isJuzuPadamNotGiven: z.boolean({ invalid_type_error: 'isJuzuPadamNotGiven must be a boolean' }).optional(),
+
+  isPazhayaPadamNotGiven: z.boolean({ invalid_type_error: 'isPazhayaPadamNotGiven must be a boolean' }).optional(),
+
   notes: z
     .string({ invalid_type_error: 'notes must be a string' })
     .max(500, 'notes must not exceed 500 characters')

@@ -10,7 +10,13 @@ import { RotateCcw, AlertCircle, RefreshCw, Loader2, CheckCircle2, Lock, Award, 
 
 import { getStudentCategory } from '@/lib/studentCategory';
 
-type StudentDraft = ProgressEntry & { studentName: string; rollNumber: string };
+type StudentDraft = ProgressEntry & {
+  studentName: string;
+  rollNumber: string;
+  isPuthiyaPadamNotGiven: boolean;
+  isJuzuPadamNotGiven: boolean;
+  isPazhayaPadamNotGiven: boolean;
+};
 
 const STORAGE_KEY = 'madrasa_teacher_drafts_v1';
 
@@ -30,6 +36,9 @@ const draftFromStudent = (s: Student): StudentDraft => {
       isPazhayaPadamWrong: Boolean(s.todayProgress.isPazhayaPadamWrong),
       isAbsent: Boolean(s.todayProgress.isAbsent),
       needsRevision: Boolean(s.todayProgress.needsRevision),
+      isPuthiyaPadamNotGiven: Boolean(s.todayProgress.isPuthiyaPadamNotGiven),
+      isJuzuPadamNotGiven: Boolean(s.todayProgress.isJuzuPadamNotGiven),
+      isPazhayaPadamNotGiven: Boolean(s.todayProgress.isPazhayaPadamNotGiven),
       notes: s.todayProgress.notes || '',
     };
   }
@@ -46,6 +55,9 @@ const draftFromStudent = (s: Student): StudentDraft => {
     isPazhayaPadamWrong: false,
     isAbsent: false,
     needsRevision: false,
+    isPuthiyaPadamNotGiven: false,
+    isJuzuPadamNotGiven: false,
+    isPazhayaPadamNotGiven: false,
     notes: '',
   };
 };
@@ -302,6 +314,9 @@ export default function DataEntryList() {
           isPuthiyaPadamWrong: Boolean(draft.isPuthiyaPadamWrong),
           isCurrentLessonWrong: Boolean(draft.isCurrentLessonWrong),
           isPazhayaPadamWrong: Boolean(draft.isPazhayaPadamWrong),
+          isPuthiyaPadamNotGiven: Boolean(draft.isPuthiyaPadamNotGiven),
+          isJuzuPadamNotGiven: Boolean(draft.isJuzuPadamNotGiven),
+          isPazhayaPadamNotGiven: Boolean(draft.isPazhayaPadamNotGiven),
           notes: draft.notes?.trim() || undefined,
         };
       }
@@ -553,6 +568,11 @@ export default function DataEntryList() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <h2 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
                       {student.name}
+                      {student.currentJuzu && (
+                        <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-[10px] rounded-full border border-gray-200 dark:border-gray-700">
+                          Juzz {student.currentJuzu}
+                        </span>
+                      )}
                       {student.status === 'Discontinued' && (
                         <span className="px-2.5 py-0.5 bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 text-[10px] font-bold rounded-full border border-amber-300 dark:border-amber-700">
                           Discontinued
@@ -721,6 +741,14 @@ export default function DataEntryList() {
                                 ...(nextState ? { puthiyaPadam: 0 } : {}),
                               });
                             }}
+                            isNotGiven={Boolean(draft.isPuthiyaPadamNotGiven)}
+                            onToggleNotGiven={() => {
+                              const nextState = !draft.isPuthiyaPadamNotGiven;
+                              updateDraft(student._id, {
+                                isPuthiyaPadamNotGiven: nextState,
+                                ...(nextState ? { puthiyaPadam: 0 } : {}),
+                              });
+                            }}
                             quickChips={
                               isDowra
                                 ? [
@@ -767,6 +795,14 @@ export default function DataEntryList() {
                                 ...(nextState ? { juzuPadam: 0 } : {}),
                               });
                             }}
+                            isNotGiven={Boolean(draft.isJuzuPadamNotGiven)}
+                            onToggleNotGiven={() => {
+                              const nextState = !draft.isJuzuPadamNotGiven;
+                              updateDraft(student._id, {
+                                isJuzuPadamNotGiven: nextState,
+                                ...(nextState ? { juzuPadam: 0 } : {}),
+                              });
+                            }}
                             quickChips={[
                               { label: '5 Pages', value: 5 },
                               { label: '10 Pages', value: 10 },
@@ -800,6 +836,14 @@ export default function DataEntryList() {
                               const nextState = !draft.isPazhayaPadamWrong;
                               updateDraft(student._id, {
                                 isPazhayaPadamWrong: nextState,
+                                ...(nextState ? { pazhayaPadam: 0 } : {}),
+                              });
+                            }}
+                            isNotGiven={Boolean(draft.isPazhayaPadamNotGiven)}
+                            onToggleNotGiven={() => {
+                              const nextState = !draft.isPazhayaPadamNotGiven;
+                              updateDraft(student._id, {
+                                isPazhayaPadamNotGiven: nextState,
                                 ...(nextState ? { pazhayaPadam: 0 } : {}),
                               });
                             }}

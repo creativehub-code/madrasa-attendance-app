@@ -32,6 +32,9 @@ export interface TodayProgress {
   isPuthiyaPadamWrong?: boolean;
   isCurrentLessonWrong?: boolean;
   isPazhayaPadamWrong?: boolean;
+  isPuthiyaPadamNotGiven?: boolean;
+  isJuzuPadamNotGiven?: boolean;
+  isPazhayaPadamNotGiven?: boolean;
   notes?: string;
 }
 
@@ -72,6 +75,9 @@ export interface ProgressEntry {
   isPuthiyaPadamWrong?: boolean;
   isCurrentLessonWrong?: boolean;
   isPazhayaPadamWrong?: boolean;
+  isPuthiyaPadamNotGiven?: boolean;
+  isJuzuPadamNotGiven?: boolean;
+  isPazhayaPadamNotGiven?: boolean;
   notes?: string;
 }
 
@@ -120,5 +126,14 @@ export interface SchoolTeacherClass {
   className: string;
   studentCount: number;
   students: SchoolTeacherStudent[];
+}
+
+export interface Holiday {
+  _id: string;
+  title: string;
+  startDate: string;
+  endDate: string;
+  isGlobal: boolean;
+  classId?: string;
 }
 

@@ -17,6 +17,7 @@ const schoolTeacherRoutes = require("./routes/schoolTeacher.routes");
 const studentRoutes = require("./routes/student.routes");
 const academicRoutes = require("./routes/academic.routes");
 const classRoutes = require("./routes/class.routes");
+const holidayRoutes = require("./routes/holiday.routes");
 
 const app = express();
 
@@ -124,6 +125,7 @@ app.use("/api/school-teacher", schoolTeacherRoutes);
 app.use("/api/students", studentRoutes);
 app.use("/api/academic", academicRoutes);
 app.use("/api/classes", classRoutes);
+app.use("/api/holidays", holidayRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

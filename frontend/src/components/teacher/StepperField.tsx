@@ -16,6 +16,8 @@ interface StepperFieldProps {
   quickChips?: QuickChip[];
   isWrong?: boolean;
   onToggleWrong?: () => void;
+  isNotGiven?: boolean;
+  onToggleNotGiven?: () => void;
 }
 
 export function formatFraction(val: number): string {
@@ -45,8 +47,10 @@ export default function StepperField({
   quickChips,
   isWrong = false,
   onToggleWrong,
+  isNotGiven = false,
+  onToggleNotGiven,
 }: StepperFieldProps) {
-  const isLocked = disabled || isWrong;
+  const isLocked = disabled || isWrong || isNotGiven;
 
   const decrement = () => {
     const nextVal = Math.round((value - step) * 100) / 100;
@@ -83,11 +87,28 @@ export default function StepperField({
             <span className="text-[10px] uppercase tracking-wider font-extrabold">{isWrong ? 'Wrong (Locked)' : 'Wrong'}</span>
           </button>
         )}
+        {onToggleNotGiven && (
+          <button
+            type="button"
+            onClick={onToggleNotGiven}
+            title={isNotGiven ? "Marked as Not Given (Locked). Click to unlock." : "Mark lesson as Not Given (resets value to 0 & locks field)"}
+            className={`flex items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-bold transition active:scale-95 border ${
+              isNotGiven
+                ? 'bg-orange-600 text-white border-orange-700 shadow-xs ring-2 ring-orange-300 dark:ring-orange-800'
+                : 'bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800/60 hover:bg-orange-100 dark:hover:bg-orange-900/50'
+            }`}
+          >
+            <span aria-hidden="true">🚫</span>
+            <span className="text-[10px] uppercase tracking-wider font-extrabold">{isNotGiven ? 'Not Given (Locked)' : 'Not Given'}</span>
+          </button>
+        )}
       </div>
 
       <div className={`flex items-center justify-between gap-1 rounded-xl border p-1 transition-colors ${
         isWrong
           ? 'border-red-300 bg-red-50/50 dark:border-red-900/60 dark:bg-red-950/30'
+          : isNotGiven
+          ? 'border-orange-300 bg-orange-50/50 dark:border-orange-900/60 dark:bg-orange-950/30'
           : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800'
       }`}>
         <button
@@ -100,7 +121,7 @@ export default function StepperField({
           −
         </button>
         <span className={`min-w-[4rem] text-center text-xl font-bold tabular-nums ${
-          isWrong ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'
+          isWrong ? 'text-red-600 dark:text-red-400' : isNotGiven ? 'text-orange-600 dark:text-orange-400' : 'text-gray-900 dark:text-white'
         }`}>
           {formattedDisplay}
         </span>

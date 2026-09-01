@@ -207,6 +207,32 @@ export async function submitProgress(payload: unknown) {
 /** Alias kept for FlashcardProgressEntry compatibility */
 export const bulkSubmitProgress = submitProgress;
 
+// ─── Holidays ─────────────────────────────────────────────────────────────
+
+export const fetchHolidays = (params?: { month?: number; year?: number }) => {
+  const query = new URLSearchParams();
+  if (params?.month) query.append('month', params.month.toString());
+  if (params?.year) query.append('year', params.year.toString());
+  const queryString = query.toString() ? `?${query.toString()}` : '';
+  
+  return api(`/holidays${queryString}`);
+};
+
+export const createHoliday = (data: {
+  title?: string;
+  startDate: string;
+  endDate?: string;
+  isGlobal?: boolean;
+  classId?: string;
+}) => {
+  return api('/holidays', { method: 'POST', body: data });
+};
+
+export const deleteHoliday = (id: string) => {
+  return api(`/holidays/${id}`, { method: 'DELETE' });
+};
+
+
 export interface ClassSummary {
   totalEnrolled: number;
   presentCount: number;
