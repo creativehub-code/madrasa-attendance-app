@@ -7,10 +7,57 @@ const { asyncHandler, AppError } = require('../utils/asyncHandler');
  * @access Private (Admin / Teacher)
  */
 const getClasses = asyncHandler(async (_req, res) => {
-  const classes = await Class.find().sort({ name: 1 }).lean();
+  const classes = await Class.find()
+    .populate({
+      path: 'students',
+      match: { isActive: true, isDeleted: { $ne: true } },
+      select: 'name admissionNumber standard section currentJuzu status teacherId parentId',
+      populate: {
+        path: 'teacherId',
+        select: 'username fullName',
+      },
+    })
+    .populate({
+      path: 'teacher',
+      select: 'username fullName',
+    })
+    .sort({ name: 1 });
+
   res.json({
     success: true,
     data: { classes },
+  });
+});
+
+/**
+ * @desc   Get single class by ID with populated students and teacher
+ * @route  GET /api/classes/:id
+ * @access Private (Admin / Teacher)
+ */
+const getClassById = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const classDoc = await Class.findById(id)
+    .populate({
+      path: 'students',
+      match: { isActive: true, isDeleted: { $ne: true } },
+      select: 'name admissionNumber standard section currentJuzu status teacherId parentId',
+      populate: {
+        path: 'teacherId',
+        select: 'username fullName',
+      },
+    })
+    .populate({
+      path: 'teacher',
+      select: 'username fullName',
+    });
+
+  if (!classDoc) {
+    throw new AppError('Class not found', 404);
+  }
+
+  res.json({
+    success: true,
+    data: { class: classDoc },
   });
 });
 
@@ -51,5 +98,7 @@ const createClass = asyncHandler(async (req, res) => {
 
 module.exports = {
   getClasses,
+  getClassById,
   createClass,
 };
+

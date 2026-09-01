@@ -130,9 +130,13 @@ export default function TeacherDetailsModal({ teacher, onClose }: TeacherDetails
     mutationFn: (payload: UpdateTeacherPayload) => updateTeacher(teacher._id, payload),
     onSuccess: (res) => {
       showToast(res.data.message || 'Teacher updated successfully');
+      queryClient.invalidateQueries({ queryKey: ['adminClasses'] });
+      queryClient.invalidateQueries({ queryKey: ['classes'] });
       queryClient.invalidateQueries({ queryKey: ['adminTeachers'] });
       queryClient.invalidateQueries({ queryKey: ['teachers'] });
+      queryClient.invalidateQueries({ queryKey: ['teacherStudents'] });
       queryClient.invalidateQueries({ queryKey: ['teacherStudents', teacher._id] });
+      queryClient.invalidateQueries({ queryKey: ['adminStudents'] });
       setIsEditing(false);
       setSharedWarning(null);
     },

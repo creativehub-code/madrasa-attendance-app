@@ -36,7 +36,11 @@ const getAssignedStudents = asyncHandler(async (req, res) => {
   if (req.user.role === 'school_teacher' && req.user.standards?.length > 0) {
     filter.standard = { $in: req.user.standards };
   } else {
-    filter.teacherId = req.user._id;
+    if (req.user.assignedClass) {
+      filter.$or = [{ teacherId: req.user._id }, { classId: req.user.assignedClass }];
+    } else {
+      filter.teacherId = req.user._id;
+    }
   }
 
   const students = await Student.find(filter)

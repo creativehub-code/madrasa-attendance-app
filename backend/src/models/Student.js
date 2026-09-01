@@ -78,7 +78,8 @@ const studentSchema = new mongoose.Schema(
     teacherId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: [true, 'Teacher is required'],
+      required: false,
+      default: null,
     },
     parentId: {
       type: mongoose.Schema.Types.ObjectId,

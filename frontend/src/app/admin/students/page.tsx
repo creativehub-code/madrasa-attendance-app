@@ -153,9 +153,52 @@ export default function AdminStudentsPage() {
 
   // ── Groupings using useMemo ──────────────────────────────────────────────────
 
-  // Group strictly by Class Name (extracting from className, classId.name, or class.name)
+  // Group strictly by Class Name (incorporating classesList populated students and flat students array)
   const classGroups: StudentGroup[] = useMemo(() => {
     const groupMap: Record<string, StudentGroup> = {};
+
+    // 1. Pre-fill groups from classesList with populated students & teacher info
+    classesList.forEach((cls) => {
+      const clsName = cls.name.trim();
+      if (clsName) {
+        const assignedTeacher = teachers.find(
+          (t) =>
+            (t.assignedClass && typeof t.assignedClass === 'object'
+              ? t.assignedClass._id === cls._id
+              : t.assignedClass === cls._id) || t.assignedClassName === clsName
+        );
+        const tName = assignedTeacher ? assignedTeacher.name : cls.teacher?.fullName || cls.teacher?.username || '';
+
+        const populatedStudents: AdminStudent[] = (cls.students || []).map((s) => {
+          const tUser =
+            typeof s.teacherId === 'object' && s.teacherId !== null
+              ? (s.teacherId.fullName || s.teacherId.username || tName)
+              : tName;
+
+          return {
+            _id: s._id,
+            name: s.name,
+            rollNumber: s.admissionNumber,
+            standard: s.standard || '',
+            section: s.section || '',
+            className: clsName,
+            status: (s.status as 'Active' | 'Discontinued') || 'Active',
+            parentUsername: '—',
+            teacherUsername: tUser,
+            needsRevision: false,
+            isActive: true,
+          };
+        });
+
+        groupMap[clsName] = {
+          groupName: clsName,
+          teacherUsername: tName,
+          students: populatedStudents,
+        };
+      }
+    });
+
+    // 2. Merge flat student records into groupMap
     students.forEach((s) => {
       const clsName =
         s.className?.trim() ||
@@ -170,14 +213,17 @@ export default function AdminStudentsPage() {
           students: [],
         };
       }
-      groupMap[cls].students.push(s);
+      if (!groupMap[cls].students.some((st) => st._id === s._id)) {
+        groupMap[cls].students.push(s);
+      }
     });
+
     return Object.values(groupMap).sort((a, b) => {
       if (a.groupName === 'Unassigned Class') return 1;
       if (b.groupName === 'Unassigned Class') return -1;
       return a.groupName.localeCompare(b.groupName);
     });
-  }, [students]);
+  }, [students, classesList, teachers]);
 
   // Group by Standard
   const standardGroups: StudentGroup[] = useMemo(() => {
@@ -196,7 +242,9 @@ export default function AdminStudentsPage() {
   const loadStudents = () => {
     queryClient.invalidateQueries({ queryKey: ['adminStudents'] });
     queryClient.invalidateQueries({ queryKey: ['adminTeachers'] });
+    queryClient.invalidateQueries({ queryKey: ['adminClasses'] });
     queryClient.invalidateQueries({ queryKey: ['classes'] });
+    queryClient.invalidateQueries({ queryKey: ['teacherStudents'] });
   };
 
   const showToast = (text: string, type: 'success' | 'error' = 'success') => {

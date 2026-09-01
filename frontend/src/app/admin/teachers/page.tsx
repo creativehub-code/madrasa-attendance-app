@@ -307,6 +307,10 @@ export default function AdminTeachersPage() {
       setCreatedTeacher(res.data);
       showNotification(`Account "${res.data.teacher.username}" created successfully!`);
       queryClient.invalidateQueries({ queryKey: ['adminTeachers'] });
+      queryClient.invalidateQueries({ queryKey: ['adminClasses'] });
+      queryClient.invalidateQueries({ queryKey: ['classes'] });
+      queryClient.invalidateQueries({ queryKey: ['teacherStudents'] });
+      queryClient.invalidateQueries({ queryKey: ['adminStudents'] });
       queryClient.invalidateQueries({ queryKey: ['adminStats'] });
     },
     onError: (err: unknown) => {

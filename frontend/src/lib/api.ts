@@ -403,6 +403,7 @@ export interface AdminTeacher {
   username?: string;
   role?: string;
   standards?: string[];
+  assignedClass?: string | { _id: string; name: string } | null;
   assignedClassName?: string;
   status?: string;
   isActive?: boolean;
@@ -439,10 +440,23 @@ export function formatTeacherName(nameOrEmail?: string | null): string {
     .join(' ');
 }
 
+export interface ClassStudentItem {
+  _id: string;
+  name: string;
+  admissionNumber: string;
+  standard?: string;
+  section?: string;
+  currentJuzu?: number;
+  status?: string;
+  teacherId?: string | { _id: string; username?: string; fullName?: string };
+}
+
 export interface ClassItem {
   _id: string;
   name: string;
   description?: string;
+  students?: ClassStudentItem[];
+  teacher?: { _id: string; username?: string; fullName?: string } | null;
 }
 
 export async function fetchClasses() {

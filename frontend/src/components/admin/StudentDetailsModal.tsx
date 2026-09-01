@@ -152,10 +152,11 @@ export default function StudentDetailsModal({ student, onClose, teachers, classe
       showToast('Student updated successfully');
       queryClient.invalidateQueries({ queryKey: ['adminStudents'] });
       queryClient.invalidateQueries({ queryKey: ['adminTeachers'] });
+      queryClient.invalidateQueries({ queryKey: ['adminClasses'] });
+      queryClient.invalidateQueries({ queryKey: ['classes'] });
       queryClient.invalidateQueries({ queryKey: ['teacherStudents'] });
       queryClient.invalidateQueries({ queryKey: ['teacherClassSummary'] });
       queryClient.invalidateQueries({ queryKey: ['adminSections'] });
-      queryClient.invalidateQueries({ queryKey: ['classes'] });
       if (onSuccess) {
         onSuccess();
       }

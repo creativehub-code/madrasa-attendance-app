@@ -278,6 +278,14 @@ const createTeacher = asyncHandler(async (req, res) => {
     assignedClassName: assignedRole === 'Teacher' ? (assignedClassName || '') : '',
   });
 
+  // Cascade/Bulk update: if a class is assigned to this teacher, update all students of that class
+  if (assignedRole === 'Teacher' && assignedClass) {
+    await Student.updateMany(
+      { classId: assignedClass },
+      { $set: { teacherId: teacher._id } }
+    );
+  }
+
   console.log('[Admin] createTeacher — success:', { teacherId: teacher._id, username: teacher.username, role: teacher.role });
 
   await logActivity({
@@ -960,12 +968,17 @@ const getTeacherStudents = asyncHandler(async (req, res) => {
 
   if (!teacher) throw new AppError('Teacher not found', 404);
 
-  // Build filter: school teachers scoped by standards, madrasa teachers by teacherId
+  // Build filter: school teachers scoped by standards, madrasa teachers by teacherId or assignedClass
   const filter = { isActive: true, isDeleted: { $ne: true } };
   if (teacher.role === 'school_teacher' && teacher.standards?.length > 0) {
     filter.standard = { $in: teacher.standards };
   } else {
-    filter.teacherId = id;
+    if (teacher.assignedClass) {
+      const clsId = typeof teacher.assignedClass === 'object' ? teacher.assignedClass._id : teacher.assignedClass;
+      filter.$or = [{ teacherId: id }, { classId: clsId }];
+    } else {
+      filter.teacherId = id;
+    }
   }
 
   const students = await Student.find(filter)
@@ -1024,6 +1037,11 @@ const updateTeacher = asyncHandler(async (req, res) => {
       if (assignedClass === null || assignedClass === '') {
         teacher.assignedClass = null;
         teacher.assignedClassName = '';
+        // Disassociate any students currently linked to this teacher
+        await Student.updateMany(
+          { teacherId: teacher._id },
+          { $set: { teacherId: null } }
+        );
       } else {
         if (!mongoose.Types.ObjectId.isValid(assignedClass)) {
           throw new AppError('Invalid class ID format', 400);
@@ -1032,6 +1050,18 @@ const updateTeacher = asyncHandler(async (req, res) => {
         if (!classObj) throw new AppError('Selected class not found', 404);
         teacher.assignedClass = classObj._id;
         teacher.assignedClassName = classObj.name;
+
+        // Cleanup: disassociate students of previous class(es) who do NOT belong to the new classObj._id
+        await Student.updateMany(
+          { teacherId: teacher._id, classId: { $ne: classObj._id } },
+          { $set: { teacherId: null } }
+        );
+
+        // Cascade/Bulk update: link all students belonging to the new class to this teacher
+        await Student.updateMany(
+          { classId: classObj._id },
+          { $set: { teacherId: teacher._id } }
+        );
       }
     } else if (assignedClassName !== undefined) {
       teacher.assignedClassName = assignedClassName ? assignedClassName.trim() : '';
