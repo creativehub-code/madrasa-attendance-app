@@ -422,13 +422,22 @@ const updateStudent = asyncHandler(async (req, res) => {
   if (status && ['Active', 'Discontinued'].includes(status)) {
     student.status = status;
   }
-  if (teacherId !== undefined && teacherId !== '') {
-    if (!mongoose.Types.ObjectId.isValid(teacherId)) {
-      throw new AppError('Invalid teacherId format', 400);
+  if (teacherId !== undefined) {
+    if (teacherId === null || teacherId === '') {
+      student.teacherId = null;
+    } else {
+      if (!mongoose.Types.ObjectId.isValid(teacherId)) {
+        throw new AppError('Invalid teacherId format', 400);
+      }
+      const teacherExists = await User.findOne({ 
+        _id: teacherId, 
+        role: { $in: ['Teacher', 'school_teacher'] }, 
+        isActive: true, 
+        isDeleted: { $ne: true } 
+      });
+      if (!teacherExists) throw new AppError('Selected teacher not found or is inactive', 404);
+      student.teacherId = teacherExists._id;
     }
-    const teacher = await User.findOne({ _id: teacherId, role: { $in: ['Teacher', 'school_teacher'] }, isActive: true });
-    if (!teacher) throw new AppError('Selected teacher not found or is inactive', 404);
-    student.teacherId = teacher._id;
   }
 
   if (classId !== undefined) {

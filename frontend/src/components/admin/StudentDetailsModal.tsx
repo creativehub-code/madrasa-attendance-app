@@ -418,7 +418,7 @@ export default function StudentDetailsModal({ student, onClose, teachers, classe
                   >
                     <option value="">Select Teacher</option>
                     {teachers.map((t) => (
-                      <option key={t._id} value={t._id}>{t.name}</option>
+                      <option key={t._id} value={t._id}>{t.name || t.username}</option>
                     ))}
                   </select>
                 </div>
