@@ -441,9 +441,14 @@ const updateStudent = asyncHandler(async (req, res) => {
   }
 
   if (classId !== undefined) {
+    const hasClassChanged = String(student.classId) !== String(classId);
+
     if (classId === null || classId === '') {
       student.classId = null;
       student.className = '';
+      if (hasClassChanged) {
+        student.teacherId = null;
+      }
     } else {
       if (!mongoose.Types.ObjectId.isValid(classId)) {
         throw new AppError('Invalid classId format', 400);
@@ -452,6 +457,20 @@ const updateStudent = asyncHandler(async (req, res) => {
       if (!classObj) throw new AppError('Selected class not found', 404);
       student.classId = classObj._id;
       student.className = classObj.name;
+
+      if (hasClassChanged) {
+        const assignedTeacher = await User.findOne({ 
+          assignedClass: classObj._id, 
+          role: { $in: ['Teacher', 'school_teacher'] }, 
+          isActive: true, 
+          isDeleted: { $ne: true } 
+        });
+        if (assignedTeacher) {
+          student.teacherId = assignedTeacher._id;
+        } else {
+          student.teacherId = null;
+        }
+      }
     }
   } else if (className !== undefined) {
     student.className = className ? className.trim() : '';

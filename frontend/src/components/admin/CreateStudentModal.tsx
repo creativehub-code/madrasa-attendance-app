@@ -446,7 +446,20 @@ export default function CreateStudentModal({
                 /* Class Dropdown */
                 <select
                   value={formClassId}
-                  onChange={(e) => setFormClassId(e.target.value)}
+                  onChange={(e) => {
+                    const newClassId = e.target.value;
+                    setFormClassId(newClassId);
+                    if (newClassId) {
+                      const selectedClass = classesList.find(c => c._id === newClassId);
+                      if (selectedClass && selectedClass.teacher) {
+                        setFormTeacherId(selectedClass.teacher._id);
+                      } else {
+                        setFormTeacherId('');
+                      }
+                    } else {
+                      setFormTeacherId('');
+                    }
+                  }}
                   className={`w-full rounded-xl border px-3.5 py-2.5 text-sm font-medium transition-all duration-200 outline-none shadow-xs ${
                     darkMode
                       ? 'bg-gray-800/80 border-gray-700 text-white hover:border-gray-600 focus:bg-gray-900 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20'

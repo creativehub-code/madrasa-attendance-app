@@ -323,7 +323,20 @@ export default function StudentDetailsModal({ student, onClose, teachers, classe
                   </label>
                   <select
                     value={classId}
-                    onChange={(e) => setClassId(e.target.value)}
+                    onChange={(e) => {
+                      const newClassId = e.target.value;
+                      setClassId(newClassId);
+                      if (newClassId) {
+                        const selectedClass = availableClasses.find(c => c._id === newClassId);
+                        if (selectedClass && selectedClass.teacher) {
+                          setTeacherId(selectedClass.teacher._id);
+                        } else {
+                          setTeacherId('');
+                        }
+                      } else {
+                        setTeacherId('');
+                      }
+                    }}
                     className={`w-full rounded-xl border px-3.5 py-2.5 text-sm font-medium transition-all duration-200 outline-none shadow-xs ${
                       darkMode
                         ? 'bg-gray-800/80 border-gray-700 text-white hover:border-gray-600 focus:bg-gray-900 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20'
