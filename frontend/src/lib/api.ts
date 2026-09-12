@@ -679,6 +679,7 @@ export interface ParentChild {
   rollNo: string;
   section?: string;
   className: string;
+  classId?: string;
   currentJuzuNumber: number;
   dowraCount?: number;
   category?: string;

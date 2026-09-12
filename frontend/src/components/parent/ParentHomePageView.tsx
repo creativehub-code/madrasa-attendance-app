@@ -80,11 +80,18 @@ export default function ParentHomePageView() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const todayDateStr = new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+
   // 4. Fetch Holidays
   const { data: holidaysData } = useQuery({
     queryKey: ['holidays', todayDateStr],
     queryFn: async () => {
-      const res = await fetchHolidays();
+      const res: any = await fetchHolidays();
       return res.data.holidays;
     },
     staleTime: 5 * 60 * 1000,
@@ -98,14 +105,6 @@ export default function ParentHomePageView() {
     start.setHours(0, 0, 0, 0);
     end.setHours(23, 59, 59, 999);
     return today >= start && today <= end && (h.isGlobal || h.classId === activeChild?.classId);
-  });
-
-
-  const todayDateStr = new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
   });
 
   const showNotification = (msg: string) => {
@@ -162,7 +161,7 @@ export default function ParentHomePageView() {
 
   const avatarInitial = activeChild.name ? activeChild.name.charAt(0).toUpperCase() : 'S';
   const currentJuzu = dailyData?.progress?.juzuNumber ?? activeChild.currentJuzuNumber ?? 1;
-  const progressRecord = dailyData?.progress;
+  const progressRecord: any = dailyData?.progress;
   const needsRevision = progressRecord ? progressRecord.needsRevision : activeChild.needsRevision;
   const revisionReason = progressRecord?.notes || activeChild.revisionReason || 'Lesson repetition requested by teacher.';
 

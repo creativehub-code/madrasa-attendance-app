@@ -6,20 +6,24 @@ const { getISTDateBounds, normalizeDate } = require('../utils/dateUtils');
 // @route   GET /api/holidays
 // @access  Private
 const getHolidays = asyncHandler(async (req, res) => {
-  const { month, year } = req.query;
-  const filter = {};
+  const { month, year, classId } = req.query;
+  const conditions = [];
 
   if (month && year) {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0, 23, 59, 59, 999);
-    filter.$or = [
-      { startDate: { $lte: endDate }, endDate: { $gte: startDate } }
-    ];
+    conditions.push({ startDate: { $lte: endDate }, endDate: { $gte: startDate } });
   } else {
     // Return all future/current holidays by default if no month specified
     const { start: todayStart } = getISTDateBounds();
-    filter.endDate = { $gte: todayStart };
+    conditions.push({ endDate: { $gte: todayStart } });
   }
+
+  if (classId) {
+    conditions.push({ $or: [{ isGlobal: true }, { classId }] });
+  }
+
+  const filter = conditions.length > 1 ? { $and: conditions } : (conditions[0] || {});
 
   const holidays = await Holiday.find(filter).sort({ startDate: 1 }).lean();
 

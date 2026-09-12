@@ -99,7 +99,7 @@ export default function StepperField({
             }`}
           >
             <span aria-hidden="true">🚫</span>
-            <span className="text-[10px] uppercase tracking-wider font-extrabold">{isNotGiven ? 'Not Given (Locked)' : 'Not Given'}</span>
+            <span className="text-[10px] uppercase tracking-wider font-extrabold">{isNotGiven ? 'Not Given ' : 'Not Given'}</span>
           </button>
         )}
       </div>

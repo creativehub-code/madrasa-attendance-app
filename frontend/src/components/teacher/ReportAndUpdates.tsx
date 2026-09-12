@@ -892,6 +892,8 @@ export default function ReportAndUpdates() {
                                 <span className="text-xl font-black text-gray-900 dark:text-white">
                                   {progressByDate.get(actualSelectedDate).isPuthiyaPadamWrong
                                     ? '0 Lines ❌'
+                                    : progressByDate.get(actualSelectedDate).isPuthiyaPadamNotGiven
+                                    ? 'Not Given (തന്നില്ല)'
                                     : `${progressByDate.get(actualSelectedDate).puthiyaPadam ?? 0} ${(progressByDate.get(actualSelectedDate).puthiyaPadam ?? 0) === 1 ? 'Line' : 'Lines'}`}
                                 </span>
                               </div>
@@ -902,6 +904,8 @@ export default function ReportAndUpdates() {
                                 <span className="text-xl font-black text-blue-900 dark:text-blue-300">
                                   {progressByDate.get(actualSelectedDate).isCurrentLessonWrong
                                     ? '0 Pages ❌'
+                                    : progressByDate.get(actualSelectedDate).isJuzuPadamNotGiven
+                                    ? 'Not Given (തന്നില്ല)'
                                     : `${progressByDate.get(actualSelectedDate).juzuPadam ?? 0} ${(progressByDate.get(actualSelectedDate).juzuPadam ?? 0) === 1 ? 'Page' : 'Pages'}`}
                                 </span>
                               </div>
@@ -997,6 +1001,8 @@ export default function ReportAndUpdates() {
                                       <span className="text-sm font-black text-blue-700 dark:text-blue-300 mt-1">
                                         {p.isPuthiyaPadamWrong
                                           ? '0 Lines ❌'
+                                          : p.isPuthiyaPadamNotGiven
+                                          ? 'Not Given (തന്നില്ല)'
                                           : `${p.puthiyaPadam ?? 0} ${(p.puthiyaPadam ?? 0) === 1 ? 'Line' : 'Lines'}`}
                                       </span>
                                    </div>
@@ -1005,6 +1011,8 @@ export default function ReportAndUpdates() {
                                       <span className="text-sm font-black text-purple-700 dark:text-purple-300 mt-1">
                                         {p.isCurrentLessonWrong
                                           ? '0 Pages ❌'
+                                          : p.isJuzuPadamNotGiven
+                                          ? 'Not Given (തന്നില്ല)'
                                           : `${p.juzuPadam ?? 0} ${(p.juzuPadam ?? 0) === 1 ? 'Page' : 'Pages'}`}
                                       </span>
                                    </div>

@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import DataEntryList from '@/components/teacher/DataEntryList';
-import { fetchHolidays, createHoliday } from '@/lib/api';
-import { CalendarDays, Sparkles, X, Loader2, Check } from 'lucide-react';
+import { fetchHolidays, createHoliday, deleteHoliday } from '@/lib/api';
+import { CalendarDays, Sparkles, X, Loader2, Check, Trash2 } from 'lucide-react';
 import type { Holiday } from '@/types';
 
 export default function TeacherHomePage() {
@@ -26,7 +26,7 @@ export default function TeacherHomePage() {
   const { data: holidaysData } = useQuery({
     queryKey: ['holidays', todayDateStr],
     queryFn: async () => {
-      const res = await fetchHolidays();
+      const res: any = await fetchHolidays();
       return res.data.holidays;
     },
     staleTime: 5 * 60 * 1000,
@@ -59,6 +59,25 @@ export default function TeacherHomePage() {
       showNotification('Failed to create holiday. Please try again.');
     },
   });
+
+  const deleteHolidayMutation = useMutation({
+    mutationFn: deleteHoliday,
+    onSuccess: () => {
+      showNotification('Class holiday cancelled successfully!');
+      queryClient.invalidateQueries({ queryKey: ['holidays'] });
+    },
+    onError: (err) => {
+      console.error('Failed to cancel holiday:', err);
+      showNotification('Failed to cancel holiday. Please try again.');
+    },
+  });
+
+  const handleMarkTodayClassHoliday = () => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    setHolidayTitle('Class Holiday');
+    setHolidayStartDate(todayStr);
+    setHolidayEndDate(todayStr);
+  };
 
   const handleHolidaySubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,12 +127,25 @@ export default function TeacherHomePage() {
       </header>
 
       {activeHoliday && (
-        <div className="mb-4 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 p-4 shadow-lg shadow-orange-500/20 text-white flex items-center justify-between">
+        <div className="mb-4 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 p-4 shadow-lg shadow-orange-500/20 text-white flex items-center justify-between gap-3">
           <div>
             <h3 className="font-bold text-sm">Today is a {activeHoliday.isGlobal ? 'Global Holiday' : 'Class Holiday'}</h3>
             <p className="text-xs font-medium text-orange-100">{activeHoliday.title}</p>
           </div>
-          <Sparkles className="h-5 w-5 text-orange-200" />
+          <div className="flex items-center gap-2">
+            {!activeHoliday.isGlobal && (
+              <button
+                type="button"
+                onClick={() => deleteHolidayMutation.mutate(activeHoliday._id)}
+                disabled={deleteHolidayMutation.isPending}
+                className="flex items-center gap-1.5 rounded-xl bg-white/20 hover:bg-white/30 backdrop-blur-md px-3 py-1.5 text-xs font-extrabold text-white transition active:scale-95 border border-white/30 disabled:opacity-50"
+              >
+                {deleteHolidayMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                <span>Cancel Holiday</span>
+              </button>
+            )}
+            <Sparkles className="h-5 w-5 text-orange-200 shrink-0" />
+          </div>
         </div>
       )}
 
@@ -139,6 +171,17 @@ export default function TeacherHomePage() {
             </div>
 
             <form onSubmit={handleHolidaySubmit} className="flex flex-col gap-4">
+              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                <span className="text-xs font-semibold text-gray-600">Quick Option:</span>
+                <button
+                  type="button"
+                  onClick={handleMarkTodayClassHoliday}
+                  className="flex items-center gap-1.5 rounded-xl bg-orange-100 text-orange-800 px-3 py-1.5 text-xs font-bold hover:bg-orange-200 transition border border-orange-200"
+                >
+                  <CalendarDays className="h-3.5 w-3.5" />
+                  Mark Today as Class Holiday
+                </button>
+              </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">Holiday Title</label>
                 <input
@@ -190,6 +233,35 @@ export default function TeacherHomePage() {
                 </button>
               </div>
             </form>
+
+            {holidays.length > 0 && (
+              <div className="mt-4 border-t border-gray-100 pt-3 flex flex-col gap-2">
+                <span className="text-xs font-bold text-gray-700">Existing Holidays ({holidays.length})</span>
+                <div className="flex flex-col gap-1.5 max-h-[160px] overflow-y-auto pr-1">
+                  {holidays.map((h) => (
+                    <div key={h._id} className="flex items-center justify-between rounded-xl bg-gray-50 p-2.5 border border-gray-100">
+                      <div>
+                        <span className="text-xs font-bold text-gray-800">{h.title}</span>
+                        <span className="ml-1.5 text-[10px] text-gray-500">
+                          ({h.isGlobal ? 'Global' : 'Class'})
+                        </span>
+                      </div>
+                      {!h.isGlobal && (
+                        <button
+                          type="button"
+                          onClick={() => deleteHolidayMutation.mutate(h._id)}
+                          disabled={deleteHolidayMutation.isPending}
+                          className="flex items-center gap-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 px-2 py-1 text-[11px] font-bold border border-red-200 transition active:scale-95 disabled:opacity-50"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          <span>Cancel</span>
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

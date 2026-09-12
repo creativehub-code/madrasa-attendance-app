@@ -22,9 +22,11 @@ import {
   LucideIcon,
   Plus,
   CalendarDays,
+  Loader2,
+  Trash2,
 } from 'lucide-react';
 import { useAdminTheme } from '@/context/AdminThemeContext';
-import { STANDARDS } from '@/types';
+import { STANDARDS, type Holiday } from '@/types';
 import {
   fetchAdminStats,
   fetchAdminRecentActivities,
@@ -42,6 +44,8 @@ import {
   createClass,
   type ClassItem,
   createHoliday,
+  fetchHolidays,
+  deleteHoliday,
   markAdminReportRead,
 } from '@/lib/api';
 import CreateStudentModal from '@/components/admin/CreateStudentModal';
@@ -252,18 +256,40 @@ export default function AdminDashboardPage() {
     },
   });
 
+  const { data: holidaysData, isLoading: isHolidaysLoading } = useQuery({
+    queryKey: ['holidays'],
+    queryFn: async () => {
+      const res: any = await fetchHolidays();
+      return res.data.holidays;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const holidays: Holiday[] = holidaysData || [];
+
   const holidayMutation = useMutation({
     mutationFn: createHoliday,
     onSuccess: () => {
-      setActiveModal(null);
       setHolidayTitle('Madrasa Holiday');
       setHolidayStartDate('');
       setHolidayEndDate('');
       showNotification('Global holiday created successfully!');
+      queryClient.invalidateQueries({ queryKey: ['holidays'] });
     },
     onError: (err) => {
       console.error('[Admin] createHoliday failed:', err);
       showNotification('Failed to create holiday. Please try again.');
+    },
+  });
+
+  const deleteHolidayMutation = useMutation({
+    mutationFn: deleteHoliday,
+    onSuccess: () => {
+      showNotification('Holiday cancelled successfully!');
+      queryClient.invalidateQueries({ queryKey: ['holidays'] });
+    },
+    onError: (err) => {
+      console.error('[Admin] deleteHoliday failed:', err);
+      showNotification('Failed to cancel holiday. Please try again.');
     },
   });
 
@@ -276,6 +302,13 @@ export default function AdminDashboardPage() {
       targetAudience: announcementAudience,
       priority: announcementPriority,
     });
+  };
+
+  const handleMarkTodayAsHoliday = () => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    setHolidayTitle('Madrasa Global Holiday');
+    setHolidayStartDate(todayStr);
+    setHolidayEndDate(todayStr);
   };
 
   const handleHolidaySubmit = (e: React.FormEvent) => {
@@ -700,6 +733,17 @@ export default function AdminDashboardPage() {
             {/* Manage Global Holiday */}
             {activeModal === 'holiday' && (
               <form onSubmit={handleHolidaySubmit} className="flex flex-col gap-4">
+                <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+                  <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">Quick Option:</span>
+                  <button
+                    type="button"
+                    onClick={handleMarkTodayAsHoliday}
+                    className="flex items-center gap-1.5 rounded-xl bg-orange-100 text-orange-800 dark:bg-orange-950/60 dark:text-orange-300 px-3 py-1.5 text-xs font-bold hover:bg-orange-200 transition border border-orange-200 dark:border-orange-800"
+                  >
+                    <CalendarDays className="h-3.5 w-3.5" />
+                    Mark Today as Holiday
+                  </button>
+                </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Holiday Title</label>
                   <input
@@ -751,6 +795,59 @@ export default function AdminDashboardPage() {
                     {holidayMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                     Create Holiday
                   </button>
+                </div>
+
+                {/* Active & Upcoming Holidays List */}
+                <div className="mt-4 border-t border-gray-100 dark:border-gray-800 pt-4 flex flex-col gap-3">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
+                    Active & Upcoming Holidays ({holidays.length})
+                  </h4>
+                  {isHolidaysLoading ? (
+                    <div className="flex justify-center p-3">
+                      <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                    </div>
+                  ) : holidays.length === 0 ? (
+                    <p className="text-xs text-gray-400 py-2 text-center">No active or upcoming holidays created.</p>
+                  ) : (
+                    <div className="flex flex-col gap-2 max-h-[220px] overflow-y-auto pr-1">
+                      {holidays.map((h) => (
+                        <div
+                          key={h._id}
+                          className="flex items-center justify-between rounded-2xl border border-gray-100 dark:border-gray-800 bg-gray-50/70 dark:bg-gray-800/60 p-3"
+                        >
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-gray-900 dark:text-white">{h.title}</span>
+                              <span
+                                className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
+                                  h.isGlobal
+                                    ? 'bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-950/60 dark:text-orange-300 dark:border-orange-800'
+                                    : 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800'
+                                }`}
+                              >
+                                {h.isGlobal ? 'Global' : 'Class'}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                              {new Date(h.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                              {h.endDate && h.endDate !== h.startDate && (
+                                <> - {new Date(h.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</>
+                              )}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => deleteHolidayMutation.mutate(h._id)}
+                            disabled={deleteHolidayMutation.isPending}
+                            className="flex items-center gap-1 rounded-xl bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400 hover:bg-red-100 border border-red-200 dark:border-red-800/60 px-2.5 py-1.5 text-xs font-bold transition active:scale-95 disabled:opacity-50"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            <span>Cancel</span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </form>
             )}

@@ -569,7 +569,7 @@ export default function DataEntryList() {
                     <h2 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
                       {student.name}
                       {student.currentJuzu && (
-                        <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-[10px] rounded-full border border-gray-200 dark:border-gray-700">
+                        <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs font-medium rounded-full border border-gray-200 dark:border-gray-700">
                           Juzz {student.currentJuzu}
                         </span>
                       )}

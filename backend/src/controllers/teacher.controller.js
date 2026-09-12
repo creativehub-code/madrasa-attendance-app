@@ -84,6 +84,9 @@ const getAssignedStudents = asyncHandler(async (req, res) => {
       isPuthiyaPadamWrong: p.isPuthiyaPadamWrong || false,
       isCurrentLessonWrong: p.isCurrentLessonWrong || false,
       isPazhayaPadamWrong: p.pazhayaPadamWrong || p.isPazhayaPadamWrong || false,
+      isPuthiyaPadamNotGiven: p.isPuthiyaPadamNotGiven || false,
+      isJuzuPadamNotGiven: p.isJuzuPadamNotGiven || false,
+      isPazhayaPadamNotGiven: p.isPazhayaPadamNotGiven || false,
       notes: p.notes,
     };
   });

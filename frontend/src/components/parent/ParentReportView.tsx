@@ -12,6 +12,7 @@ import {
   Users,
   Calendar,
   BookOpen,
+  Sparkles,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -19,8 +20,10 @@ import {
   fetchParentMonthlyProgress,
   fetchParentReports,
   markParentReportRead,
+  fetchHolidays,
   type ParentChild,
 } from '@/lib/api';
+import type { Holiday } from '@/types';
 import { getStudentCategory } from '@/lib/studentCategory';
 
 type TabType = 'progress' | 'notices';
@@ -145,6 +148,29 @@ export default function ParentReportView() {
     staleTime: 5 * 60 * 1000,
   });
   const issueReports = reportsData || [];
+
+  // 4. Fetch Holidays
+  const { data: holidaysData } = useQuery({
+    queryKey: ['holidays', activeMonthTab.year, activeMonthTab.month],
+    queryFn: async () => {
+      const res: any = await fetchHolidays({ month: activeMonthTab.month, year: activeMonthTab.year });
+      return res.data.holidays;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const holidays: Holiday[] = holidaysData || [];
+
+  const getHolidayForDay = (day: number) => {
+    const targetDate = new Date(activeMonthTab.year, activeMonthTab.month - 1, day);
+    targetDate.setHours(0, 0, 0, 0);
+    return holidays.find((h: any) => {
+      const start = new Date(h.startDate);
+      const end = new Date(h.endDate);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      return targetDate >= start && targetDate <= end;
+    });
+  };
 
   // Filter issue reports for active child
   const filteredReports = useMemo(() => {
@@ -381,6 +407,7 @@ export default function ParentReportView() {
                     {daysArray.map((day) => {
                       const hasData = progressByDate.has(day);
                       const isSelected = actualSelectedDate === day;
+                      const isHoliday = !!getHolidayForDay(day);
                       return (
                         <button
                           key={day}
@@ -388,6 +415,8 @@ export default function ParentReportView() {
                           className={`flex shrink-0 snap-center items-center justify-center w-11 h-11 rounded-2xl text-xs font-black transition-all duration-200 active:scale-95 ${
                             isSelected
                               ? 'bg-madrasa-700 text-white shadow-md ring-4 ring-madrasa-100 dark:ring-madrasa-900/40 scale-105'
+                              : isHoliday
+                              ? 'bg-orange-100 text-orange-900 border border-orange-300 dark:bg-orange-950/50 dark:text-orange-200 dark:border-orange-800 hover:bg-orange-200'
                               : hasData
                               ? 'bg-madrasa-50 text-madrasa-900 border border-madrasa-200 dark:bg-madrasa-900/30 dark:text-madrasa-200 dark:border-madrasa-700 hover:bg-madrasa-100 hover:scale-105'
                               : 'bg-white dark:bg-gray-800 text-gray-400 border border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
@@ -494,6 +523,22 @@ export default function ParentReportView() {
                             </div>
                           </div>
                         )}
+                      </div>
+                    ) : actualSelectedDate && getHolidayForDay(actualSelectedDate) ? (
+                      /* Holiday Callout Card */
+                      <div className="flex flex-col items-center justify-center text-center text-xs p-6 gap-3 rounded-2xl bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-800/60 text-orange-900 dark:text-orange-200 animate-in fade-in duration-200">
+                        <div className="h-12 w-12 rounded-2xl bg-orange-100 dark:bg-orange-900/60 flex items-center justify-center text-orange-600 dark:text-orange-300">
+                          <Sparkles className="h-6 w-6" />
+                        </div>
+                        <div>
+                          <h3 className="font-extrabold text-base mb-1">
+                            Today is a {getHolidayForDay(actualSelectedDate)?.isGlobal ? 'Global Holiday' : 'Class Holiday'}
+                          </h3>
+                          <p className="text-xs font-semibold text-orange-700 dark:text-orange-300">
+                            {getHolidayForDay(actualSelectedDate)?.title}
+                          </p>
+                        </div>
+                        <p className="text-[11px] text-orange-600 dark:text-orange-400">No classes were conducted on this day.</p>
                       </div>
                     ) : (
                       /* Structural Heavily Rounded Empty State Card */
