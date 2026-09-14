@@ -300,7 +300,7 @@ export default function DataEntryList() {
         const student = students.find((st) => st._id === draft.studentId);
         const category = getStudentCategory(student);
         const isQaida = category === 'Noorani Qaida';
-        const isNazira = category === 'Nazira' || (student as any)?.mode?.toLowerCase() === 'nazira';
+        const isNazira = category === 'Nazira' || (student as any)?.mode?.toLowerCase() === 'nalira' || (student as any)?.mode?.toLowerCase() === 'nazira';
 
         return {
           studentId: draft.studentId,
@@ -309,7 +309,7 @@ export default function DataEntryList() {
           juzuPadam: (isQaida || isNazira) ? 0 : (draft.juzuPadam ?? 0),
           pazhayaPadam: (isQaida || isNazira) ? 0 : (draft.pazhayaPadam ?? 0),
           dowraCount: category === 'Dowra' ? (draft.juzuNumber ?? 1) : 0,
-          category,
+          category: isNazira ? 'Nazira' : category,
           isAbsent: draft.isAbsent,
           needsRevision: draft.needsRevision,
           isPuthiyaPadamWrong: Boolean(draft.isPuthiyaPadamWrong),
@@ -591,7 +591,7 @@ export default function DataEntryList() {
                       {/* Visual UI Mode Indicator Badge */}
                       {(() => {
                         const category = getStudentCategory(student);
-                        const isNazira = category === 'Nazira' || (student as any)?.mode?.toLowerCase() === 'nazira';
+                        const isNazira = category === 'Nazira' || (student as any)?.mode?.toLowerCase() === 'nalira' || (student as any)?.mode?.toLowerCase() === 'nazira';
                         if (category === 'Noorani Qaida') {
                           return (
                             <span className="px-2.5 py-0.5 bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 text-[10px] font-bold rounded-full border border-purple-300 dark:border-purple-700">
@@ -609,7 +609,7 @@ export default function DataEntryList() {
                         if (isNazira) {
                           return (
                             <span className="px-2.5 py-0.5 bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 text-[10px] font-bold rounded-full border border-amber-300 dark:border-amber-700">
-                              Mode: Nazira
+                              Mode: {(student as any)?.mode || 'Nazira'}
                             </span>
                           );
                         }
@@ -684,7 +684,7 @@ export default function DataEntryList() {
               const category = getStudentCategory(student);
               const isQaida = category === 'Noorani Qaida';
               const isDowra = category === 'Dowra' || (student as any)?.mode === 'Dowra';
-              const isNazira = category === 'Nazira' || (student as any)?.mode?.toLowerCase() === 'nazira';
+              const isNazira = category === 'Nazira' || (student as any)?.mode?.toLowerCase() === 'nalira' || (student as any)?.mode?.toLowerCase() === 'nazira';
 
               let selectorLabel = 'Current Juzu';
               if (isQaida) selectorLabel = 'Current Lesson';

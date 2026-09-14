@@ -74,7 +74,7 @@ const submitProgressValidator = [
     .toInt(),
   body('entries.*.category')
     .optional()
-    .isIn(['Noorani Qaida', 'Dowra', 'Regular'])
+    .isIn(['Noorani Qaida', 'Hifz', 'Dowra', 'Nazira', 'Regular'])
     .withMessage('Invalid category'),
   body('entries.*.pazhayaPadamPages')
     .optional()

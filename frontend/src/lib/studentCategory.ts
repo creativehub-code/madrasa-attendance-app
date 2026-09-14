@@ -12,8 +12,11 @@ export function getStudentCategory(student?: { mode?: string; section?: string; 
 
   if (
     modeStr === 'nazira' ||
+    modeStr === 'nalira' ||
     sectionStr.includes('nazira') ||
-    classStr.includes('nazira')
+    sectionStr.includes('nalira') ||
+    classStr.includes('nazira') ||
+    classStr.includes('nalira')
   ) {
     return 'Nazira';
   }

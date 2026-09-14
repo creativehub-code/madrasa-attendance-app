@@ -310,7 +310,7 @@ export default function ParentHomePageView() {
         const category = getStudentCategory(activeChild);
         const isQaida = category === 'Noorani Qaida';
         const isDowra = category === 'Dowra' || (activeChild as any)?.mode === 'Dowra' || (dailyData?.student as any)?.mode === 'Dowra';
-        const isNazira = category === 'Nazira' || (activeChild as any)?.mode?.toLowerCase() === 'nazira' || (dailyData?.student as any)?.mode?.toLowerCase() === 'nazira';
+        const isNazira = category === 'Nazira' || (activeChild as any)?.mode?.toLowerCase() === 'nalira' || (activeChild as any)?.mode?.toLowerCase() === 'nazira' || (dailyData?.student as any)?.mode?.toLowerCase() === 'nalira' || (dailyData?.student as any)?.mode?.toLowerCase() === 'nazira' || progressRecord?.category === 'Nazira' || progressRecord?.category === 'Nalira';
         const dowraCountNum = progressRecord?.dowraCount ?? activeChild?.dowraCount ?? 1;
 
         // SVG Gauge percentage calculation for Juzu/Dowra Ring (Max = 30)

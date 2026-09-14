@@ -169,7 +169,7 @@ export default function ReportAndUpdates() {
 
   const isNaziraStudent = useMemo(() => {
     if (!activeStudentObj) return false;
-    return getStudentCategory(activeStudentObj) === 'Nazira' || (activeStudentObj as any)?.mode?.toLowerCase() === 'nazira';
+    return getStudentCategory(activeStudentObj) === 'Nazira' || (activeStudentObj as any)?.mode?.toLowerCase() === 'nalira' || (activeStudentObj as any)?.mode?.toLowerCase() === 'nazira';
   }, [activeStudentObj]);
 
   const isQaidaStudent = useMemo(() => {
@@ -908,7 +908,7 @@ export default function ReportAndUpdates() {
                                   Lesson #{progressByDate.get(actualSelectedDate).juzuNumber ?? activeStudentObj?.currentJuzu ?? 1}
                                 </span>
                               </div>
-                            ) : (progressByDate.get(actualSelectedDate).category === 'Nazira' || isNaziraStudent) ? (
+                            ) : (progressByDate.get(actualSelectedDate).category === 'Nazira' || progressByDate.get(actualSelectedDate).category === 'Nalira' || isNaziraStudent) ? (
                               <div className="flex flex-col items-center justify-center bg-amber-50 dark:bg-amber-900/20 p-5 rounded-3xl border border-amber-100 dark:border-amber-800/50 text-center w-full">
                                 <span className="text-[11px] text-amber-600 dark:text-amber-400 uppercase font-black tracking-wider mb-1">
                                   Today Lesson
@@ -1045,7 +1045,7 @@ export default function ReportAndUpdates() {
                                       Lesson #{p.juzuNumber ?? activeStudentObj?.currentJuzu ?? 1}
                                     </span>
                                   </div>
-                                ) : (p.category === 'Nazira' || isNaziraStudent) ? (
+                                ) : (p.category === 'Nazira' || p.category === 'Nalira' || isNaziraStudent) ? (
                                   <div className="flex items-center justify-between bg-amber-50 dark:bg-amber-900/20 p-3.5 px-4 rounded-2xl border border-amber-100 dark:border-amber-800/50">
                                     <div className="flex items-center gap-2">
                                       <span className="text-xs font-black uppercase tracking-wider text-amber-700 dark:text-amber-300">

@@ -122,7 +122,7 @@ export default function ParentReportView() {
   }, [activeChild]);
   const isNaziraStudent = useMemo(() => {
     if (!activeChild) return false;
-    return getStudentCategory(activeChild) === 'Nazira' || (activeChild as any)?.mode?.toLowerCase() === 'nazira';
+    return getStudentCategory(activeChild) === 'Nazira' || (activeChild as any)?.mode?.toLowerCase() === 'nalira' || (activeChild as any)?.mode?.toLowerCase() === 'nazira';
   }, [activeChild]);
 
   // 2. Fetch Monthly Progress
@@ -476,7 +476,7 @@ export default function ParentReportView() {
                                 </span>
                               )}
                             </div>
-                          ) : (progressByDate.get(actualSelectedDate).category === 'Nazira' || isNaziraStudent) ? (
+                          ) : (progressByDate.get(actualSelectedDate).category === 'Nazira' || progressByDate.get(actualSelectedDate).category === 'Nalira' || isNaziraStudent) ? (
                             <div className="flex flex-col items-center justify-center bg-amber-50 dark:bg-amber-900/20 p-5 rounded-3xl border border-amber-100 dark:border-amber-800/50 text-center w-full">
                               <span className="text-[11px] text-amber-600 dark:text-amber-400 uppercase font-black tracking-wider mb-1">
                                 Today Lesson
@@ -645,7 +645,7 @@ export default function ParentReportView() {
                                         Lesson #{p.juzuNumber ?? activeChild.currentJuzuNumber ?? 1}
                                       </span>
                                     </div>
-                                  ) : (p.category === 'Nazira' || isNaziraStudent) ? (
+                                  ) : (p.category === 'Nazira' || p.category === 'Nalira' || isNaziraStudent) ? (
                                     <div className="flex items-center justify-between bg-amber-50 dark:bg-amber-900/20 p-3.5 px-4 rounded-2xl border border-amber-100 dark:border-amber-800/50">
                                       <div className="flex items-center gap-2">
                                         <BookOpen className="h-4 w-4 text-amber-600 dark:text-amber-400" />

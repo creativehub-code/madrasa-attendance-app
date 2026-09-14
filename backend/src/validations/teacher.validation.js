@@ -20,7 +20,7 @@ const mongoIdSchema = z
 // Fractional Juz portions used in Dowra / Sabqi quick picks
 const JUZU_PORTIONS = ['1/4', '1/2', '3/4', '1', ''];
 
-const CATEGORIES = ['Noorani Qaida', 'Hifz', 'Dowra', 'Regular'];
+const CATEGORIES = ['Noorani Qaida', 'Hifz', 'Dowra', 'Nazira', 'Regular'];
 
 const ISSUE_TYPES = ['Academic Struggle', 'Frequent Absence', 'Behavioral', 'Other'];
 

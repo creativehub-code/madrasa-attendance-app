@@ -28,7 +28,7 @@ const progressSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ['Noorani Qaida', 'Dowra', 'Regular'],
+      enum: ['Noorani Qaida', 'Hifz', 'Dowra', 'Nazira', 'Regular'],
       default: 'Regular',
     },
     puthiyaPadam: {
