@@ -239,13 +239,14 @@ export default function FlashcardProgressEntry() {
         const student = students.find((s) => s._id === draft.studentId);
         const category = getStudentCategory(student);
         const isQaida = category === 'Noorani Qaida';
+        const isNazira = category === 'Nazira' || (student as any)?.mode?.toLowerCase() === 'nazira';
 
         return {
           studentId: draft.studentId,
           juzuNumber: draft.juzuNumber ?? 1,
           puthiyaPadam: isQaida ? 0 : (draft.puthiyaPadam ?? 0),
-          juzuPadam: isQaida ? 0 : (draft.juzuPadam ?? 0),
-          pazhayaPadam: isQaida ? 0 : (draft.pazhayaPadam ?? 0),
+          juzuPadam: (isQaida || isNazira) ? 0 : (draft.juzuPadam ?? 0),
+          pazhayaPadam: (isQaida || isNazira) ? 0 : (draft.pazhayaPadam ?? 0),
           dowraCount: category === 'Dowra' ? (draft.juzuNumber ?? 1) : 0,
           category,
           isAbsent: draft.isAbsent,
@@ -349,11 +350,18 @@ export default function FlashcardProgressEntry() {
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">{currentDraft.studentName}</h2>
-              {currentStudent.currentJuzu && (
-                <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs rounded-full border border-gray-200 dark:border-gray-700">
-                  Juzz {currentStudent.currentJuzu}
-                </span>
-              )}
+              {(() => {
+                const category = getStudentCategory(currentStudent);
+                const isQaida = category === 'Noorani Qaida';
+                const isDowra = category === 'Dowra' || (currentStudent as any)?.mode === 'Dowra';
+                const activeJuzu = currentDraft.juzuNumber ?? 1;
+                const badgeText = isDowra ? `Dowra ${activeJuzu}` : isQaida ? `Lesson ${activeJuzu}` : `Juz ${activeJuzu}`;
+                return (
+                  <span className="px-2 py-0.5 bg-gray-100/80 dark:bg-gray-800/80 text-gray-600 dark:text-gray-300 text-xs font-medium rounded-full border border-gray-200/60 dark:border-gray-700/60">
+                    {badgeText}
+                  </span>
+                );
+              })()}
               {currentStudent.status === 'Discontinued' && (
                 <span className="px-2.5 py-0.5 bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 text-[10px] font-bold rounded-full border border-amber-300 dark:border-amber-700">
                   Discontinued
@@ -362,6 +370,7 @@ export default function FlashcardProgressEntry() {
               {/* Visual UI Mode Indicator Badge */}
               {(() => {
                 const category = getStudentCategory(currentStudent);
+                const isNazira = category === 'Nazira' || (currentStudent as any)?.mode?.toLowerCase() === 'nazira';
                 if (category === 'Noorani Qaida') {
                   return (
                     <span className="px-2.5 py-0.5 bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 text-[10px] font-bold rounded-full border border-purple-300 dark:border-purple-700">
@@ -373,6 +382,13 @@ export default function FlashcardProgressEntry() {
                   return (
                     <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 text-[10px] font-bold rounded-full border border-emerald-300 dark:border-emerald-700">
                       Mode: Dowra
+                    </span>
+                  );
+                }
+                if (isNazira) {
+                  return (
+                    <span className="px-2.5 py-0.5 bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 text-[10px] font-bold rounded-full border border-amber-300 dark:border-amber-700">
+                      Mode: Nazira
                     </span>
                   );
                 }
@@ -418,22 +434,34 @@ export default function FlashcardProgressEntry() {
           </button>
 
           {/* Absent toggle */}
-          <label className={`flex cursor-pointer items-center gap-2 rounded-xl border border-red-100 bg-red-50/60 dark:bg-red-950/30 dark:border-red-900/50 px-3.5 py-2 ${currentStudent.status === 'Discontinued' ? 'opacity-50 cursor-not-allowed' : ''}`}>
-            <span className="text-xs font-bold text-red-900 dark:text-red-300">Absent</span>
-            <input
-              type="checkbox"
-              disabled={currentStudent.status === 'Discontinued'}
-              checked={currentDraft.isAbsent}
-              onChange={(e) =>
-                updateDraft(currentStudent._id, {
-                  isAbsent: e.target.checked,
-                  ...(e.target.checked
-                    ? { puthiyaPadam: 0, juzuPadam: 0, pazhayaPadam: 0, needsRevision: false }
-                    : {}),
-                })
-              }
-              className="h-4 w-4 rounded border-red-300 dark:border-red-700 text-red-600 focus:ring-red-500"
-            />
+          <label className={`flex cursor-pointer items-center gap-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-800/50 px-3.5 py-2 ${currentStudent.status === 'Discontinued' ? 'opacity-50 cursor-not-allowed' : ''}`}>
+            <span className="text-xs font-bold text-gray-700 dark:text-gray-300">Absent</span>
+            <div className="relative inline-flex items-center">
+              <input
+                type="checkbox"
+                disabled={currentStudent.status === 'Discontinued'}
+                checked={currentDraft.isAbsent}
+                onChange={(e) =>
+                  updateDraft(currentStudent._id, {
+                    isAbsent: e.target.checked,
+                    ...(e.target.checked
+                      ? { puthiyaPadam: 0, juzuPadam: 0, pazhayaPadam: 0, needsRevision: false }
+                      : {}),
+                  })
+                }
+                className="sr-only"
+              />
+              <div
+                className={`h-6 w-11 rounded-full transition-colors duration-200 ease-in-out ${
+                  currentDraft.isAbsent ? 'bg-red-600' : 'bg-gray-300 dark:bg-gray-700'
+                }`}
+              />
+              <div
+                className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-md transition-transform duration-200 ease-in-out ${
+                  currentDraft.isAbsent ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </div>
           </label>
         </div>
 
@@ -441,17 +469,33 @@ export default function FlashcardProgressEntry() {
         {(() => {
           const category = getStudentCategory(currentStudent);
           const isQaida = category === 'Noorani Qaida';
-          const isDowra = category === 'Dowra';
+          const isDowra = category === 'Dowra' || (currentStudent as any)?.mode === 'Dowra';
+          const isNazira = category === 'Nazira' || (currentStudent as any)?.mode?.toLowerCase() === 'nazira';
 
           let selectorLabel = 'Current Juzu';
           if (isQaida) selectorLabel = 'Current Lesson';
           if (isDowra) selectorLabel = 'Dowra Count';
+
+          const dowraQuickChips = [
+            { label: '1/4', value: 0.25 },
+            { label: '1/2', value: 0.5 },
+            { label: '3/4', value: 0.75 },
+            { label: '1', value: 1 },
+          ];
+
+          const naziraQuickChips = [
+            { label: '1 Page', value: 1 },
+            { label: '3 Pages', value: 3 },
+            { label: '5 Pages', value: 5 },
+            { label: '7 Pages', value: 7 },
+          ];
 
           return (
             <div className={`grid gap-4 ${currentDraft.isAbsent || currentStudent.status === 'Discontinued' ? 'pointer-events-none opacity-40' : ''}`}>
               <JuzuSelector
                 label={selectorLabel}
                 value={currentDraft.juzuNumber ?? 1}
+                max={isDowra ? 10 : 30}
                 onChange={(v) => {
                   updateDraft(currentStudent._id, { juzuNumber: v });
                   handleJuzuChange(currentStudent._id, v);
@@ -464,15 +508,19 @@ export default function FlashcardProgressEntry() {
                   <StepperField
                     label={
                       isNeedsRevision
-                        ? "New Lesson (Locked - Needs Revision)"
+                        ? isNazira
+                          ? "Today Lesson (Locked - Needs Revision)"
+                          : "New Lesson (Locked - Needs Revision)"
+                        : isNazira
+                        ? "Today Lesson"
                         : isDowra
-                        ? "New Lesson (Juz #)"
+                        ? "New Lesson"
                         : "New Lesson (Lines)"
                     }
                     value={currentDraft.puthiyaPadam}
                     onChange={(v) => updateDraft(currentStudent._id, { puthiyaPadam: v })}
                     max={isDowra ? 30 : 999}
-                    step={1}
+                    step={isDowra ? 0.25 : 1}
                     disabled={currentDraft.isAbsent || currentDraft.needsRevision}
                     isWrong={Boolean(currentDraft.isPuthiyaPadamWrong)}
                     onToggleWrong={() => {
@@ -491,14 +539,10 @@ export default function FlashcardProgressEntry() {
                       });
                     }}
                     quickChips={
-                      isDowra
-                        ? [
-                            { label: 'Juz 1', value: 1 },
-                            { label: 'Juz 5', value: 5 },
-                            { label: 'Juz 10', value: 10 },
-                            { label: 'Juz 15', value: 15 },
-                            { label: 'Juz 30', value: 30 },
-                          ]
+                      isNazira
+                        ? naziraQuickChips
+                        : isDowra
+                        ? dowraQuickChips
                         : [
                             { label: '5 Lines', value: 5 },
                             { label: '10 Lines', value: 10 },
@@ -507,66 +551,78 @@ export default function FlashcardProgressEntry() {
                           ]
                     }
                   />
-                  <StepperField
-                    label={isDowra ? "Current Sabqi" : "Current Lesson / Juzu Padam"}
-                    value={currentDraft.juzuPadam}
-                    onChange={(v) => updateDraft(currentStudent._id, { juzuPadam: v })}
-                    max={30}
-                    step={1}
-                    disabled={currentDraft.isAbsent}
-                    isWrong={Boolean(currentDraft.isCurrentLessonWrong)}
-                    onToggleWrong={() => {
-                      const nextState = !currentDraft.isCurrentLessonWrong;
-                      updateDraft(currentStudent._id, {
-                        isCurrentLessonWrong: nextState,
-                        ...(nextState ? { juzuPadam: 0 } : {}),
-                      });
-                    }}
-                    isNotGiven={Boolean(currentDraft.isJuzuPadamNotGiven)}
-                    onToggleNotGiven={() => {
-                      const nextState = !currentDraft.isJuzuPadamNotGiven;
-                      updateDraft(currentStudent._id, {
-                        isJuzuPadamNotGiven: nextState,
-                        ...(nextState ? { juzuPadam: 0 } : {}),
-                      });
-                    }}
-                    quickChips={[
-                      { label: '5 Pages', value: 5 },
-                      { label: '10 Pages', value: 10 },
-                      { label: '15 Pages', value: 15 },
-                      { label: '20 Pages', value: 20 },
-                    ]}
-                  />
-                  <StepperField
-                    label={isDowra ? "Old Sabqi" : "Pazhaya Padam"}
-                    value={currentDraft.pazhayaPadam}
-                    onChange={(v) => updateDraft(currentStudent._id, { pazhayaPadam: v })}
-                    max={isDowra ? 30 : 999}
-                    step={1}
-                    disabled={currentDraft.isAbsent}
-                    isWrong={Boolean(currentDraft.isPazhayaPadamWrong)}
-                    onToggleWrong={() => {
-                      const nextState = !currentDraft.isPazhayaPadamWrong;
-                      updateDraft(currentStudent._id, {
-                        isPazhayaPadamWrong: nextState,
-                        ...(nextState ? { pazhayaPadam: 0 } : {}),
-                      });
-                    }}
-                    isNotGiven={Boolean(currentDraft.isPazhayaPadamNotGiven)}
-                    onToggleNotGiven={() => {
-                      const nextState = !currentDraft.isPazhayaPadamNotGiven;
-                      updateDraft(currentStudent._id, {
-                        isPazhayaPadamNotGiven: nextState,
-                        ...(nextState ? { pazhayaPadam: 0 } : {}),
-                      });
-                    }}
-                    quickChips={[
-                      { label: '5 Pages', value: 5 },
-                      { label: '10 Pages', value: 10 },
-                      { label: '15 Pages', value: 15 },
-                      { label: '20 Pages', value: 20 },
-                    ]}
-                  />
+                  {!isNazira && (
+                    <>
+                      <StepperField
+                        label={isDowra ? "Current Sabqi" : "Current Lesson / Juzu Padam"}
+                        value={currentDraft.juzuPadam}
+                        onChange={(v) => updateDraft(currentStudent._id, { juzuPadam: v })}
+                        max={30}
+                        step={isDowra ? 0.25 : 1}
+                        disabled={currentDraft.isAbsent}
+                        isWrong={Boolean(currentDraft.isCurrentLessonWrong)}
+                        onToggleWrong={() => {
+                          const nextState = !currentDraft.isCurrentLessonWrong;
+                          updateDraft(currentStudent._id, {
+                            isCurrentLessonWrong: nextState,
+                            ...(nextState ? { juzuPadam: 0 } : {}),
+                          });
+                        }}
+                        isNotGiven={Boolean(currentDraft.isJuzuPadamNotGiven)}
+                        onToggleNotGiven={() => {
+                          const nextState = !currentDraft.isJuzuPadamNotGiven;
+                          updateDraft(currentStudent._id, {
+                            isJuzuPadamNotGiven: nextState,
+                            ...(nextState ? { juzuPadam: 0 } : {}),
+                          });
+                        }}
+                        quickChips={
+                          isDowra
+                            ? dowraQuickChips
+                            : [
+                                { label: '5 Pages', value: 5 },
+                                { label: '10 Pages', value: 10 },
+                                { label: '15 Pages', value: 15 },
+                                { label: '20 Pages', value: 20 },
+                              ]
+                        }
+                      />
+                      <StepperField
+                        label={isDowra ? "Old Sabqi" : "Pazhaya Padam"}
+                        value={currentDraft.pazhayaPadam}
+                        onChange={(v) => updateDraft(currentStudent._id, { pazhayaPadam: v })}
+                        max={isDowra ? 30 : 999}
+                        step={isDowra ? 0.25 : 1}
+                        disabled={currentDraft.isAbsent}
+                        isWrong={Boolean(currentDraft.isPazhayaPadamWrong)}
+                        onToggleWrong={() => {
+                          const nextState = !currentDraft.isPazhayaPadamWrong;
+                          updateDraft(currentStudent._id, {
+                            isPazhayaPadamWrong: nextState,
+                            ...(nextState ? { pazhayaPadam: 0 } : {}),
+                          });
+                        }}
+                        isNotGiven={Boolean(currentDraft.isPazhayaPadamNotGiven)}
+                        onToggleNotGiven={() => {
+                          const nextState = !currentDraft.isPazhayaPadamNotGiven;
+                          updateDraft(currentStudent._id, {
+                            isPazhayaPadamNotGiven: nextState,
+                            ...(nextState ? { pazhayaPadam: 0 } : {}),
+                          });
+                        }}
+                        quickChips={
+                          isDowra
+                            ? dowraQuickChips
+                            : [
+                                { label: '5 Pages', value: 5 },
+                                { label: '10 Pages', value: 10 },
+                                { label: '15 Pages', value: 15 },
+                                { label: '20 Pages', value: 20 },
+                              ]
+                        }
+                      />
+                    </>
+                  )}
                 </>
               )}
             </div>

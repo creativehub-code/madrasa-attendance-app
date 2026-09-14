@@ -41,11 +41,16 @@ const examMarkSchema = new mongoose.Schema(
       default: '',
       trim: true,
     },
+    isApproved: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
 
 examMarkSchema.index({ examId: 1, studentId: 1 }, { unique: true });
 examMarkSchema.index({ teacherId: 1, standard: 1 });
+examMarkSchema.index({ examId: 1, isApproved: 1 });
 
 module.exports = mongoose.model('ExamMark', examMarkSchema);

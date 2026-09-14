@@ -25,6 +25,7 @@ import {
 } from '@/lib/api';
 import type { Holiday } from '@/types';
 import { getStudentCategory } from '@/lib/studentCategory';
+import { formatFraction } from '@/components/teacher/StepperField';
 
 type TabType = 'progress' | 'notices';
 
@@ -114,6 +115,14 @@ export default function ParentReportView() {
   const isQaidaStudent = useMemo(() => {
     if (!activeChild) return false;
     return getStudentCategory(activeChild) === 'Noorani Qaida';
+  }, [activeChild]);
+  const isDowraStudent = useMemo(() => {
+    if (!activeChild) return false;
+    return getStudentCategory(activeChild) === 'Dowra' || (activeChild as any)?.mode === 'Dowra';
+  }, [activeChild]);
+  const isNaziraStudent = useMemo(() => {
+    if (!activeChild) return false;
+    return getStudentCategory(activeChild) === 'Nazira' || (activeChild as any)?.mode?.toLowerCase() === 'nazira';
   }, [activeChild]);
 
   // 2. Fetch Monthly Progress
@@ -467,6 +476,19 @@ export default function ParentReportView() {
                                 </span>
                               )}
                             </div>
+                          ) : (progressByDate.get(actualSelectedDate).category === 'Nazira' || isNaziraStudent) ? (
+                            <div className="flex flex-col items-center justify-center bg-amber-50 dark:bg-amber-900/20 p-5 rounded-3xl border border-amber-100 dark:border-amber-800/50 text-center w-full">
+                              <span className="text-[11px] text-amber-600 dark:text-amber-400 uppercase font-black tracking-wider mb-1">
+                                Today Lesson
+                              </span>
+                              <span className="text-2xl font-black text-amber-900 dark:text-amber-200">
+                                {progressByDate.get(actualSelectedDate).isPuthiyaPadamWrong
+                                  ? '0 Pages ❌'
+                                  : progressByDate.get(actualSelectedDate).isPuthiyaPadamNotGiven
+                                  ? 'Not Given'
+                                  : `${progressByDate.get(actualSelectedDate).puthiyaPadam ?? 0} ${(progressByDate.get(actualSelectedDate).puthiyaPadam ?? 0) === 1 ? 'Page' : 'Pages'}`}
+                              </span>
+                            </div>
                           ) : (
                             <div className="grid grid-cols-3 gap-3">
                               <div className="flex flex-col items-center bg-gray-50 dark:bg-gray-700/50 p-4 rounded-3xl border border-gray-100 dark:border-gray-600">
@@ -475,33 +497,39 @@ export default function ParentReportView() {
                                 </span>
                                 <span className="text-xl font-black text-gray-900 dark:text-white">
                                   {progressByDate.get(actualSelectedDate).isPuthiyaPadamWrong
-                                    ? '0 Lines ❌'
+                                    ? isDowraStudent ? '0 Juz ❌' : '0 Lines ❌'
                                     : progressByDate.get(actualSelectedDate).isPuthiyaPadamNotGiven
-                                    ? 'Not Given (തന്നില്ല)'
+                                    ? 'Not Given'
+                                    : isDowraStudent
+                                    ? `${formatFraction(progressByDate.get(actualSelectedDate).puthiyaPadam ?? 0)} Juz`
                                     : `${progressByDate.get(actualSelectedDate).puthiyaPadam ?? 0} ${(progressByDate.get(actualSelectedDate).puthiyaPadam ?? 0) === 1 ? 'Line' : 'Lines'}`}
                                 </span>
                               </div>
                               <div className="flex flex-col items-center bg-blue-50 dark:bg-blue-900/20 p-4 rounded-3xl border border-blue-100 dark:border-blue-800/50">
                                 <span className="text-[11px] text-blue-500 dark:text-blue-400 uppercase font-black tracking-wider mb-2">
-                                  Current Lesson
+                                  {isDowraStudent ? 'Current Sabqi' : 'Current Lesson'}
                                 </span>
                                 <span className="text-xl font-black text-blue-900 dark:text-blue-300">
                                   {progressByDate.get(actualSelectedDate).isCurrentLessonWrong
-                                    ? '0 Pages ❌'
+                                    ? isDowraStudent ? '0 Juz ❌' : '0 Pages ❌'
                                     : progressByDate.get(actualSelectedDate).isJuzuPadamNotGiven
-                                    ? 'Not Given (തന്നില്ല)'
+                                    ? 'Not Given'
+                                    : isDowraStudent
+                                    ? `${formatFraction(progressByDate.get(actualSelectedDate).juzuPadam ?? 0)} Juz`
                                     : `${progressByDate.get(actualSelectedDate).juzuPadam ?? 0} ${(progressByDate.get(actualSelectedDate).juzuPadam ?? 0) === 1 ? 'Page' : 'Pages'}`}
                                 </span>
                               </div>
                               <div className="flex flex-col items-center bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-3xl border border-emerald-100 dark:border-emerald-800/50">
                                 <span className="text-[11px] text-emerald-600 dark:text-emerald-400 uppercase font-black tracking-wider mb-2">
-                                  Pazhaya
+                                  {isDowraStudent ? 'Old Sabqi' : 'Pazhaya'}
                                 </span>
                                 <span className="text-xl font-black text-emerald-900 dark:text-emerald-300">
                                   {progressByDate.get(actualSelectedDate).isPazhayaPadamWrong
-                                    ? '0 Pages ❌'
+                                    ? isDowraStudent ? '0 Juz ❌' : '0 Pages ❌'
                                     : progressByDate.get(actualSelectedDate).isPazhayaPadamNotGiven
-                                    ? 'Not Given (തന്നില്ല)'
+                                    ? 'Not Given'
+                                    : isDowraStudent
+                                    ? `${formatFraction(progressByDate.get(actualSelectedDate).pazhayaPadam ?? 0)} Juz`
                                     : `${progressByDate.get(actualSelectedDate).pazhayaPadam ?? 0} ${(progressByDate.get(actualSelectedDate).pazhayaPadam ?? 0) === 1 ? 'Page' : 'Pages'}`}
                                 </span>
                               </div>
@@ -617,6 +645,22 @@ export default function ParentReportView() {
                                         Lesson #{p.juzuNumber ?? activeChild.currentJuzuNumber ?? 1}
                                       </span>
                                     </div>
+                                  ) : (p.category === 'Nazira' || isNaziraStudent) ? (
+                                    <div className="flex items-center justify-between bg-amber-50 dark:bg-amber-900/20 p-3.5 px-4 rounded-2xl border border-amber-100 dark:border-amber-800/50">
+                                      <div className="flex items-center gap-2">
+                                        <BookOpen className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                                        <span className="text-xs font-black uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                                          Today Lesson
+                                        </span>
+                                      </div>
+                                      <span className="text-sm font-black text-amber-900 dark:text-amber-100">
+                                        {p.isPuthiyaPadamWrong
+                                          ? '0 Pages ❌'
+                                          : p.isPuthiyaPadamNotGiven
+                                          ? 'Not Given'
+                                          : `${p.puthiyaPadam ?? 0} ${(p.puthiyaPadam ?? 0) === 1 ? 'Page' : 'Pages'}`}
+                                      </span>
+                                    </div>
                                   ) : (
                                     <div className="grid grid-cols-3 gap-3">
                                       <div className="flex flex-col items-center bg-blue-50 dark:bg-blue-900/20 p-3 rounded-xl border border-blue-100 dark:border-blue-800/50">
@@ -625,27 +669,33 @@ export default function ParentReportView() {
                                         </span>
                                         <span className="text-sm font-black text-blue-700 dark:text-blue-300 mt-1">
                                           {p.isPuthiyaPadamWrong
-                                            ? '0 Lines ❌'
+                                            ? isDowraStudent ? '0 Juz ❌' : '0 Lines ❌'
+                                            : isDowraStudent
+                                            ? `${formatFraction(p.puthiyaPadam ?? 0)} Juz`
                                             : `${p.puthiyaPadam ?? 0} ${(p.puthiyaPadam ?? 0) === 1 ? 'Line' : 'Lines'}`}
                                         </span>
                                       </div>
                                       <div className="flex flex-col items-center bg-purple-50 dark:bg-purple-900/20 p-3 rounded-xl border border-purple-100 dark:border-purple-800/50">
                                         <span className="text-[9px] text-purple-500 dark:text-purple-400 uppercase font-black tracking-wider">
-                                          Current Lesson
+                                          {isDowraStudent ? 'Current Sabqi' : 'Current Lesson'}
                                         </span>
                                         <span className="text-sm font-black text-purple-700 dark:text-purple-300 mt-1">
                                           {p.isCurrentLessonWrong
-                                            ? '0 Pages ❌'
+                                            ? isDowraStudent ? '0 Juz ❌' : '0 Pages ❌'
+                                            : isDowraStudent
+                                            ? `${formatFraction(p.juzuPadam ?? 0)} Juz`
                                             : `${p.juzuPadam ?? 0} ${(p.juzuPadam ?? 0) === 1 ? 'Page' : 'Pages'}`}
                                         </span>
                                       </div>
                                       <div className="flex flex-col items-center bg-orange-50 dark:bg-orange-900/20 p-3 rounded-xl border border-orange-100 dark:border-orange-800/50">
                                         <span className="text-[9px] text-orange-600 dark:text-orange-400 uppercase font-black tracking-wider">
-                                          Pazhaya
+                                          {isDowraStudent ? 'Old Sabqi' : 'Pazhaya'}
                                         </span>
                                         <span className="text-sm font-black text-orange-700 dark:text-orange-300 mt-1">
                                           {p.isPazhayaPadamWrong
-                                            ? '0 Pages ❌'
+                                            ? isDowraStudent ? '0 Juz ❌' : '0 Pages ❌'
+                                            : isDowraStudent
+                                            ? `${formatFraction(p.pazhayaPadam ?? 0)} Juz`
                                             : `${p.pazhayaPadam ?? 0} ${(p.pazhayaPadam ?? 0) === 1 ? 'Page' : 'Pages'}`}
                                         </span>
                                       </div>

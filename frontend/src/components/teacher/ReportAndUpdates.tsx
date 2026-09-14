@@ -35,6 +35,7 @@ import {
   type RawStudent,
   type ProgressReportResponse,
 } from "@/lib/api";
+import { getStudentCategory } from "@/lib/studentCategory";
 
 type TabType = "summary" | "attention" | "report" | "progress";
 
@@ -161,6 +162,20 @@ export default function ReportAndUpdates() {
   // Derived states for Progress Tab
   const defaultStudentId = students.length > 0 ? students[0]._id : "";
   const actualSelectedStudentId = progressSelectedStudentId || defaultStudentId;
+
+  const activeStudentObj = useMemo(() => {
+    return students.find((s) => s._id === actualSelectedStudentId) || null;
+  }, [students, actualSelectedStudentId]);
+
+  const isNaziraStudent = useMemo(() => {
+    if (!activeStudentObj) return false;
+    return getStudentCategory(activeStudentObj) === 'Nazira' || (activeStudentObj as any)?.mode?.toLowerCase() === 'nazira';
+  }, [activeStudentObj]);
+
+  const isQaidaStudent = useMemo(() => {
+    if (!activeStudentObj) return false;
+    return getStudentCategory(activeStudentObj) === 'Noorani Qaida';
+  }, [activeStudentObj]);
 
   const availableMonths = useMemo(() => {
     if (!progressReports?.recentProgress) return [];
@@ -884,42 +899,66 @@ export default function ReportAndUpdates() {
                           </div>
                           
                           {!progressByDate.get(actualSelectedDate).isAbsent ? (
-                            <div className="grid grid-cols-3 gap-4">
-                              <div className="flex flex-col items-center bg-gray-50 dark:bg-gray-700/50 p-4 rounded-3xl border border-gray-100 dark:border-gray-600">
-                                <span className="text-[11px] text-gray-500 uppercase font-black tracking-wider mb-2">
-                                  Puthiya
+                            (progressByDate.get(actualSelectedDate).category === 'Noorani Qaida' || isQaidaStudent) ? (
+                              <div className="flex flex-col items-center justify-center bg-purple-50 dark:bg-purple-900/20 p-5 rounded-3xl border border-purple-100 dark:border-purple-800/50 text-center w-full">
+                                <span className="text-[11px] text-purple-600 dark:text-purple-400 uppercase font-black tracking-wider mb-1">
+                                  Noorani Qaida Lesson
                                 </span>
-                                <span className="text-xl font-black text-gray-900 dark:text-white">
+                                <span className="text-2xl font-black text-purple-900 dark:text-purple-200">
+                                  Lesson #{progressByDate.get(actualSelectedDate).juzuNumber ?? activeStudentObj?.currentJuzu ?? 1}
+                                </span>
+                              </div>
+                            ) : (progressByDate.get(actualSelectedDate).category === 'Nazira' || isNaziraStudent) ? (
+                              <div className="flex flex-col items-center justify-center bg-amber-50 dark:bg-amber-900/20 p-5 rounded-3xl border border-amber-100 dark:border-amber-800/50 text-center w-full">
+                                <span className="text-[11px] text-amber-600 dark:text-amber-400 uppercase font-black tracking-wider mb-1">
+                                  Today Lesson
+                                </span>
+                                <span className="text-2xl font-black text-amber-900 dark:text-amber-200">
                                   {progressByDate.get(actualSelectedDate).isPuthiyaPadamWrong
-                                    ? '0 Lines ❌'
+                                    ? '0 Pages ❌'
                                     : progressByDate.get(actualSelectedDate).isPuthiyaPadamNotGiven
                                     ? 'Not Given (തന്നില്ല)'
-                                    : `${progressByDate.get(actualSelectedDate).puthiyaPadam ?? 0} ${(progressByDate.get(actualSelectedDate).puthiyaPadam ?? 0) === 1 ? 'Line' : 'Lines'}`}
+                                    : `${progressByDate.get(actualSelectedDate).puthiyaPadam ?? 0} ${(progressByDate.get(actualSelectedDate).puthiyaPadam ?? 0) === 1 ? 'Page' : 'Pages'}`}
                                 </span>
                               </div>
-                              <div className="flex flex-col items-center bg-blue-50 dark:bg-blue-900/20 p-4 rounded-3xl border border-blue-100 dark:border-blue-800/50">
-                                <span className="text-[11px] text-blue-500 uppercase font-black tracking-wider mb-2">
-                                  Current Lesson
-                                </span>
-                                <span className="text-xl font-black text-blue-900 dark:text-blue-300">
-                                  {progressByDate.get(actualSelectedDate).isCurrentLessonWrong
-                                    ? '0 Pages ❌'
-                                    : progressByDate.get(actualSelectedDate).isJuzuPadamNotGiven
-                                    ? 'Not Given (തന്നില്ല)'
-                                    : `${progressByDate.get(actualSelectedDate).juzuPadam ?? 0} ${(progressByDate.get(actualSelectedDate).juzuPadam ?? 0) === 1 ? 'Page' : 'Pages'}`}
-                                </span>
+                            ) : (
+                              <div className="grid grid-cols-3 gap-4">
+                                <div className="flex flex-col items-center bg-gray-50 dark:bg-gray-700/50 p-4 rounded-3xl border border-gray-100 dark:border-gray-600">
+                                  <span className="text-[11px] text-gray-500 uppercase font-black tracking-wider mb-2">
+                                    Puthiya
+                                  </span>
+                                  <span className="text-xl font-black text-gray-900 dark:text-white">
+                                    {progressByDate.get(actualSelectedDate).isPuthiyaPadamWrong
+                                      ? '0 Lines ❌'
+                                      : progressByDate.get(actualSelectedDate).isPuthiyaPadamNotGiven
+                                      ? 'Not Given (തന്നില്ല)'
+                                      : `${progressByDate.get(actualSelectedDate).puthiyaPadam ?? 0} ${(progressByDate.get(actualSelectedDate).puthiyaPadam ?? 0) === 1 ? 'Line' : 'Lines'}`}
+                                  </span>
+                                </div>
+                                <div className="flex flex-col items-center bg-blue-50 dark:bg-blue-900/20 p-4 rounded-3xl border border-blue-100 dark:border-blue-800/50">
+                                  <span className="text-[11px] text-blue-500 uppercase font-black tracking-wider mb-2">
+                                    Current Lesson
+                                  </span>
+                                  <span className="text-xl font-black text-blue-900 dark:text-blue-300">
+                                    {progressByDate.get(actualSelectedDate).isCurrentLessonWrong
+                                      ? '0 Pages ❌'
+                                      : progressByDate.get(actualSelectedDate).isJuzuPadamNotGiven
+                                      ? 'Not Given (തന്നില്ല)'
+                                      : `${progressByDate.get(actualSelectedDate).juzuPadam ?? 0} ${(progressByDate.get(actualSelectedDate).juzuPadam ?? 0) === 1 ? 'Page' : 'Pages'}`}
+                                  </span>
+                                </div>
+                                <div className="flex flex-col items-center bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-3xl border border-emerald-100 dark:border-emerald-800/50">
+                                  <span className="text-[11px] text-emerald-600 uppercase font-black tracking-wider mb-2">
+                                    Pazhaya
+                                  </span>
+                                  <span className="text-xl font-black text-emerald-900 dark:text-emerald-300">
+                                    {progressByDate.get(actualSelectedDate).isPazhayaPadamWrong
+                                      ? '0 Pages ❌'
+                                      : `${progressByDate.get(actualSelectedDate).pazhayaPadam ?? 0} ${(progressByDate.get(actualSelectedDate).pazhayaPadam ?? 0) === 1 ? 'Page' : 'Pages'}`}
+                                  </span>
+                                </div>
                               </div>
-                              <div className="flex flex-col items-center bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-3xl border border-emerald-100 dark:border-emerald-800/50">
-                                <span className="text-[11px] text-emerald-600 uppercase font-black tracking-wider mb-2">
-                                  Pazhaya
-                                </span>
-                                <span className="text-xl font-black text-emerald-900 dark:text-emerald-300">
-                                  {progressByDate.get(actualSelectedDate).isPazhayaPadamWrong
-                                    ? '0 Pages ❌'
-                                    : `${progressByDate.get(actualSelectedDate).pazhayaPadam ?? 0} ${(progressByDate.get(actualSelectedDate).pazhayaPadam ?? 0) === 1 ? 'Page' : 'Pages'}`}
-                                </span>
-                              </div>
-                            </div>
+                            )
                           ) : (
                             <div className="flex items-center justify-center gap-2 text-sm font-semibold text-gray-500 py-6 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
                               <AlertCircle className="h-5 w-5 text-gray-400" />
@@ -995,36 +1034,64 @@ export default function ReportAndUpdates() {
                               </div>
                               
                               {!isAbsent && (
-                                <div className="grid grid-cols-3 gap-3">
-                                   <div className="flex flex-col items-center bg-blue-50 dark:bg-blue-900/20 p-3 rounded-xl border border-blue-100 dark:border-blue-800/50">
-                                      <span className="text-[9px] text-blue-500 dark:text-blue-400 uppercase font-black tracking-wider">Puthiya</span>
-                                      <span className="text-sm font-black text-blue-700 dark:text-blue-300 mt-1">
-                                        {p.isPuthiyaPadamWrong
-                                          ? '0 Lines ❌'
-                                          : p.isPuthiyaPadamNotGiven
-                                          ? 'Not Given (തന്നില്ല)'
-                                          : `${p.puthiyaPadam ?? 0} ${(p.puthiyaPadam ?? 0) === 1 ? 'Line' : 'Lines'}`}
+                                (p.category === 'Noorani Qaida' || isQaidaStudent) ? (
+                                  <div className="flex items-center justify-between bg-purple-50 dark:bg-purple-900/20 p-3.5 px-4 rounded-2xl border border-purple-100 dark:border-purple-800/50">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-black uppercase tracking-wider text-purple-700 dark:text-purple-300">
+                                        Noorani Qaida Lesson
                                       </span>
-                                   </div>
-                                   <div className="flex flex-col items-center bg-purple-50 dark:bg-purple-900/20 p-3 rounded-xl border border-purple-100 dark:border-purple-800/50">
-                                      <span className="text-[9px] text-purple-500 dark:text-purple-400 uppercase font-black tracking-wider">Current Lesson</span>
-                                      <span className="text-sm font-black text-purple-700 dark:text-purple-300 mt-1">
-                                        {p.isCurrentLessonWrong
-                                          ? '0 Pages ❌'
-                                          : p.isJuzuPadamNotGiven
-                                          ? 'Not Given (തന്നില്ല)'
-                                          : `${p.juzuPadam ?? 0} ${(p.juzuPadam ?? 0) === 1 ? 'Page' : 'Pages'}`}
+                                    </div>
+                                    <span className="text-sm font-black text-purple-900 dark:text-purple-100">
+                                      Lesson #{p.juzuNumber ?? activeStudentObj?.currentJuzu ?? 1}
+                                    </span>
+                                  </div>
+                                ) : (p.category === 'Nazira' || isNaziraStudent) ? (
+                                  <div className="flex items-center justify-between bg-amber-50 dark:bg-amber-900/20 p-3.5 px-4 rounded-2xl border border-amber-100 dark:border-amber-800/50">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-black uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                                        Today Lesson
                                       </span>
-                                   </div>
-                                   <div className="flex flex-col items-center bg-orange-50 dark:bg-orange-900/20 p-3 rounded-xl border border-orange-100 dark:border-orange-800/50">
-                                      <span className="text-[9px] text-orange-600 dark:text-orange-400 uppercase font-black tracking-wider">Pazhaya</span>
-                                      <span className="text-sm font-black text-orange-700 dark:text-orange-300 mt-1">
-                                        {p.isPazhayaPadamWrong
-                                          ? '0 Pages ❌'
-                                          : `${p.pazhayaPadam || 0} ${(p.pazhayaPadam || 0) === 1 ? 'Page' : 'Pages'}`}
-                                      </span>
-                                   </div>
-                                 </div>
+                                    </div>
+                                    <span className="text-sm font-black text-amber-900 dark:text-amber-100">
+                                      {p.isPuthiyaPadamWrong
+                                        ? '0 Pages ❌'
+                                        : p.isPuthiyaPadamNotGiven
+                                        ? 'Not Given (തന്നില്ല)'
+                                        : `${p.puthiyaPadam ?? 0} ${(p.puthiyaPadam ?? 0) === 1 ? 'Page' : 'Pages'}`}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <div className="grid grid-cols-3 gap-3">
+                                     <div className="flex flex-col items-center bg-blue-50 dark:bg-blue-900/20 p-3 rounded-xl border border-blue-100 dark:border-blue-800/50">
+                                        <span className="text-[9px] text-blue-500 dark:text-blue-400 uppercase font-black tracking-wider">Puthiya</span>
+                                        <span className="text-sm font-black text-blue-700 dark:text-blue-300 mt-1">
+                                          {p.isPuthiyaPadamWrong
+                                            ? '0 Lines ❌'
+                                            : p.isPuthiyaPadamNotGiven
+                                            ? 'Not Given (തന്നില്ല)'
+                                            : `${p.puthiyaPadam ?? 0} ${(p.puthiyaPadam ?? 0) === 1 ? 'Line' : 'Lines'}`}
+                                        </span>
+                                     </div>
+                                     <div className="flex flex-col items-center bg-purple-50 dark:bg-purple-900/20 p-3 rounded-xl border border-purple-100 dark:border-purple-800/50">
+                                        <span className="text-[9px] text-purple-500 dark:text-purple-400 uppercase font-black tracking-wider">Current Lesson</span>
+                                        <span className="text-sm font-black text-purple-700 dark:text-purple-300 mt-1">
+                                          {p.isCurrentLessonWrong
+                                            ? '0 Pages ❌'
+                                            : p.isJuzuPadamNotGiven
+                                            ? 'Not Given (തന്നില്ല)'
+                                            : `${p.juzuPadam ?? 0} ${(p.juzuPadam ?? 0) === 1 ? 'Page' : 'Pages'}`}
+                                        </span>
+                                     </div>
+                                     <div className="flex flex-col items-center bg-orange-50 dark:bg-orange-900/20 p-3 rounded-xl border border-orange-100 dark:border-orange-800/50">
+                                        <span className="text-[9px] text-orange-600 dark:text-orange-400 uppercase font-black tracking-wider">Pazhaya</span>
+                                        <span className="text-sm font-black text-orange-700 dark:text-orange-300 mt-1">
+                                          {p.isPazhayaPadamWrong
+                                            ? '0 Pages ❌'
+                                            : `${p.pazhayaPadam || 0} ${(p.pazhayaPadam || 0) === 1 ? 'Page' : 'Pages'}`}
+                                        </span>
+                                     </div>
+                                  </div>
+                                )
                               )}
                         
                               {p.notes && (

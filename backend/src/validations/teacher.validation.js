@@ -39,7 +39,6 @@ const progressEntrySchema = z.object({
   // Noorani Qaida / new lesson lines (0–999)
   puthiyaPadam: z
     .number({ invalid_type_error: 'puthiyaPadam must be a number' })
-    .int('puthiyaPadam must be an integer')
     .min(0, 'puthiyaPadam must be ≥ 0')
     .max(999, 'puthiyaPadam must be ≤ 999')
     .optional(),
@@ -63,7 +62,6 @@ const progressEntrySchema = z.object({
   // Old lesson (Sabqi) — pages revised
   pazhayaPadam: z
     .number({ invalid_type_error: 'pazhayaPadam must be a number' })
-    .int('pazhayaPadam must be an integer')
     .min(0, 'pazhayaPadam must be ≥ 0')
     .max(999, 'pazhayaPadam must be ≤ 999')
     .optional(),

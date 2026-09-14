@@ -3,8 +3,10 @@ const { protect, authorize } = require('../middleware/auth');
 const {
   createExam,
   getExams,
+  deleteExam,
   submitExamMarks,
   getExamMarks,
+  approveExamMarks,
   updateSyllabus,
   getSyllabus,
 } = require('../controllers/academic.controller');
@@ -18,8 +20,10 @@ router.use(protect);
 router.get('/exams', getExams);
 router.get('/exams/:examId/marks', getExamMarks);
 
-// Admin-only exam creation
+// Admin-only exam management & approval
 router.post('/exams', authorize('Admin'), createExam);
+router.delete('/exams/:examId', authorize('Admin'), deleteExam);
+router.patch('/exams/:examId/approve-marks', authorize('Admin'), approveExamMarks);
 
 // Teachers & Admin exam mark entry
 router.post('/exams/:examId/marks', authorize('Teacher', 'school_teacher', 'Admin'), submitExamMarks);

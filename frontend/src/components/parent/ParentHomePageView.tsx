@@ -17,13 +17,16 @@ import {
   Bell,
   UserX,
   Zap,
+  Award,
 } from 'lucide-react';
 import {
   fetchParentChildren,
   fetchParentDailyProgress,
   fetchParentAnnouncements,
+  fetchParentExamResults,
   fetchHolidays,
   type ParentChild,
+  type ExamMark,
 } from '@/lib/api';
 import type { Holiday } from '@/types';
 import { getStudentCategory } from '@/lib/studentCategory';
@@ -79,6 +82,18 @@ export default function ParentHomePageView() {
     },
     staleTime: 5 * 60 * 1000,
   });
+
+  // 3b. Fetch Approved Exam Results for Active Child
+  const { data: examResultsData } = useQuery({
+    queryKey: ['parentExamResults', activeChildId],
+    queryFn: async () => {
+      const res = await fetchParentExamResults(activeChildId!);
+      return res.data.results || [];
+    },
+    enabled: !!activeChildId,
+    staleTime: 5 * 60 * 1000,
+  });
+  const examResults: ExamMark[] = examResultsData || [];
 
   const todayDateStr = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
@@ -294,8 +309,14 @@ export default function ParentHomePageView() {
       ) : (() => {
         const category = getStudentCategory(activeChild);
         const isQaida = category === 'Noorani Qaida';
-        const isDowra = category === 'Dowra';
-        const dowraCountNum = progressRecord?.dowraCount || activeChild?.dowraCount || 1;
+        const isDowra = category === 'Dowra' || (activeChild as any)?.mode === 'Dowra' || (dailyData?.student as any)?.mode === 'Dowra';
+        const isNazira = category === 'Nazira' || (activeChild as any)?.mode?.toLowerCase() === 'nazira' || (dailyData?.student as any)?.mode?.toLowerCase() === 'nazira';
+        const dowraCountNum = progressRecord?.dowraCount ?? activeChild?.dowraCount ?? 1;
+
+        // SVG Gauge percentage calculation for Juzu/Dowra Ring (Max = 30)
+        const progressVal = isDowra ? dowraCountNum : currentJuzu;
+        const ringPercentage = Math.min(Math.max((progressVal / 30) * 100, 5), 100);
+        const strokeDashoffset = 251.2 - (251.2 * ringPercentage) / 100;
 
         return (
           <>
@@ -305,7 +326,7 @@ export default function ParentHomePageView() {
                 <div className="flex items-center gap-2">
                   <BookOpen className="h-4 w-4 text-emerald-500" />
                   <h2 className="text-[11px] font-extrabold tracking-widest text-gray-500 dark:text-gray-400 uppercase">
-                    {isQaida ? "Today's Qaida Progress" : isDowra ? "Today's Dowra Progress" : "Today's Lessons"}
+                    {isQaida ? "Today's Qaida Progress" : isDowra ? "Today's Dowra Progress" : isNazira ? "Today's Nazira Progress" : "Today's Lessons"}
                   </h2>
                 </div>
                 <span className="rounded-full bg-emerald-500/10 dark:bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 backdrop-blur-md">
@@ -342,10 +363,10 @@ export default function ParentHomePageView() {
 
                     <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
                       <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
-                        {isQaida ? "LESSON" : "JUZU"}
+                        {isDowra ? "DOWRA" : isQaida ? "LESSON" : isNazira ? "NAZIRA" : "JUZU"}
                       </span>
                       <span className="text-xl font-black tracking-tight text-gray-900 dark:text-white">
-                        {currentJuzu}
+                        {isDowra ? dowraCountNum : currentJuzu}
                       </span>
                     </div>
                   </div>
@@ -371,18 +392,20 @@ export default function ParentHomePageView() {
                         </p>
                       </div>
                     ) : (
-                      /* ── 2. HIFZ (REGULAR) & DOWRA CATEGORIES VIEW ──────────────────── */
+                      /* ── 2. HIFZ / DOWRA / NAZIRA CATEGORIES VIEW ──────────────────── */
                       <>
-                        {/* New Lesson (Puthiya Padam) Tile */}
+                        {/* New Lesson / Today Lesson Tile */}
                         <div className="flex flex-col gap-1.5 rounded-2xl bg-gray-50/80 dark:bg-white/[0.04] p-3 border border-gray-100 dark:border-white/5 transition-all duration-200">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-1.5">
                               <BookOpen className="h-3.5 w-3.5 text-emerald-500" />
                               <span className="font-bold text-xs text-gray-900 dark:text-white">
-                                {isDowra ? "New Lesson (Juz #)" : "New Lesson"}
+                                {isNazira ? "Today Lesson" : "New Lesson"}
                               </span>
                             </div>
-                            <span className="text-[9px] font-extrabold uppercase tracking-widest text-gray-400">New</span>
+                            <span className="text-[9px] font-extrabold uppercase tracking-widest text-gray-400">
+                              {isNazira ? "Today" : "New"}
+                            </span>
                           </div>
                           <div>
                             <span className={`inline-block rounded-full px-3 py-0.5 text-xs font-bold ${
@@ -391,81 +414,85 @@ export default function ParentHomePageView() {
                                 : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
                             }`}>
                               {progressRecord?.isPuthiyaPadamWrong
-                                ? '0 Lines (Wrong ❌)'
+                                ? isNazira ? '0 Pages (Wrong)' : isDowra ? '0 Juz (Wrong)' : '0 Lines (Wrong)'
                                 : progressRecord?.isPuthiyaPadamNotGiven
-                                ? 'Not Given (തന്നില്ല)'
+                                ? 'Not Given'
                                 : needsRevision
-                                ? '0 Lines (Locked)'
+                                ? isNazira ? '0 Pages (Locked)' : isDowra ? '0 Juz (Locked)' : '0 Lines (Locked)'
                                 : progressRecord
-                                  ? isDowra
-                                    ? `Juz #${progressRecord.puthiyaPadam ?? 1}`
+                                  ? isNazira
+                                    ? `${progressRecord.puthiyaPadam ?? 0} ${(progressRecord.puthiyaPadam ?? 0) === 1 ? 'Page' : 'Pages'}`
+                                    : isDowra
+                                    ? `${formatFraction(progressRecord.puthiyaPadam ?? 0)} Juz`
                                     : `${progressRecord.puthiyaPadam ?? 0} ${(progressRecord.puthiyaPadam ?? 0) === 1 ? 'Line' : 'Lines'}`
                                   : 'Not recorded yet'}
                             </span>
                           </div>
                         </div>
 
-                        {/* Current Lesson / Current Sabqi Tile */}
-                        <div className="flex flex-col gap-1.5 rounded-2xl bg-gray-50/80 dark:bg-white/[0.04] p-3 border border-gray-100 dark:border-white/5 transition-all duration-200">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1.5">
-                              <Sparkles className="h-3.5 w-3.5 text-blue-500" />
-                              <span className="font-bold text-xs text-gray-900 dark:text-white">
-                                {isDowra ? "Current Sabqi" : "Current Lesson"}
-                              </span>
+                        {!isNazira && (
+                          <>
+                            {/* Current Lesson / Current Sabqi Tile */}
+                            <div className="flex flex-col gap-1.5 rounded-2xl bg-gray-50/80 dark:bg-white/[0.04] p-3 border border-gray-100 dark:border-white/5 transition-all duration-200">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5">
+                                  <Sparkles className="h-3.5 w-3.5 text-blue-500" />
+                                  <span className="font-bold text-xs text-gray-900 dark:text-white">
+                                    {isDowra ? "Current Sabqi" : "Current Lesson"}
+                                  </span>
+                                </div>
+                                <span className="text-[9px] font-extrabold uppercase tracking-widest text-blue-400">Sabqi</span>
+                              </div>
+                              <div>
+                                <span className={`inline-block rounded-full px-3 py-0.5 text-xs font-bold ${
+                                  progressRecord?.isCurrentLessonWrong || progressRecord?.isJuzuPadamNotGiven
+                                    ? 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20'
+                                    : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'
+                                }`}>
+                                  {progressRecord
+                                      ? progressRecord.isCurrentLessonWrong
+                                        ? isDowra ? '0 Juz (Wrong)' : '0 Pages (Wrong)'
+                                        : progressRecord.isJuzuPadamNotGiven
+                                        ? 'Not Given'
+                                        : isDowra
+                                          ? `${formatFraction(progressRecord.juzuPadam ?? 0)} Juz`
+                                          : `${progressRecord.juzuPadam ?? 0} ${(progressRecord.juzuPadam ?? 0) === 1 ? 'Page' : 'Pages'}`
+                                      : 'Not recorded yet'}
+                                </span>
+                              </div>
                             </div>
-                            {isDowra ? (
-                              <span className="rounded-full bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 text-[10px] font-black">
-                                Dowra #{dowraCountNum}
-                              </span>
-                            ) : (
-                              <span className="text-[9px] font-extrabold uppercase tracking-widest text-blue-400">Sabqi</span>
-                            )}
-                          </div>
-                          <div>
-                            <span className={`inline-block rounded-full px-3 py-0.5 text-xs font-bold ${
-                              progressRecord?.isCurrentLessonWrong || progressRecord?.isJuzuPadamNotGiven
-                                ? 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20'
-                                : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'
-                            }`}>
-                              {progressRecord
-                                  ? progressRecord.isCurrentLessonWrong
-                                    ? '0 Pages (Wrong ❌)'
-                                    : progressRecord.isJuzuPadamNotGiven
-                                    ? 'Not Given (തന്നില്ല)'
-                                    : `${progressRecord.juzuPadam ?? 0} ${(progressRecord.juzuPadam ?? 0) === 1 ? 'Page' : 'Pages'}`
-                                  : 'Not recorded yet'}
-                            </span>
-                          </div>
-                        </div>
 
-                        {/* Old Lesson / Old Sabqi Tile */}
-                        <div className="flex flex-col gap-1.5 rounded-2xl bg-gray-50/80 dark:bg-white/[0.04] p-3 border border-gray-100 dark:border-white/5 transition-all duration-200">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1.5">
-                              <RotateCcw className="h-3.5 w-3.5 text-purple-500" />
-                              <span className="font-bold text-xs text-gray-900 dark:text-white">
-                                {isDowra ? "Old Sabqi" : "Old Lesson"}
-                              </span>
+                            {/* Old Lesson / Old Sabqi Tile */}
+                            <div className="flex flex-col gap-1.5 rounded-2xl bg-gray-50/80 dark:bg-white/[0.04] p-3 border border-gray-100 dark:border-white/5 transition-all duration-200">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5">
+                                  <RotateCcw className="h-3.5 w-3.5 text-purple-500" />
+                                  <span className="font-bold text-xs text-gray-900 dark:text-white">
+                                    {isDowra ? "Old Sabqi" : "Old Lesson"}
+                                  </span>
+                                </div>
+                                <span className="text-[9px] font-extrabold uppercase tracking-widest text-purple-400">Revision</span>
+                              </div>
+                              <div>
+                                <span className={`inline-block rounded-full px-3 py-0.5 text-xs font-bold ${
+                                  progressRecord?.isPazhayaPadamWrong || progressRecord?.isPazhayaPadamNotGiven
+                                    ? 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20'
+                                    : 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20'
+                                }`}>
+                                  {progressRecord
+                                      ? progressRecord.isPazhayaPadamWrong
+                                        ? isDowra ? '0 Juz (Wrong)' : '0 Pages (Wrong)'
+                                        : progressRecord.isPazhayaPadamNotGiven
+                                        ? 'Not Given'
+                                        : isDowra
+                                          ? `${formatFraction(progressRecord.pazhayaPadam ?? 0)} Juz`
+                                          : `${progressRecord.pazhayaPadam ?? 0} ${(progressRecord.pazhayaPadam ?? 0) === 1 ? 'Page' : 'Pages'}`
+                                      : 'Not recorded yet'}
+                                </span>
+                              </div>
                             </div>
-                            <span className="text-[9px] font-extrabold uppercase tracking-widest text-purple-400">Revision</span>
-                          </div>
-                          <div>
-                            <span className={`inline-block rounded-full px-3 py-0.5 text-xs font-bold ${
-                              progressRecord?.isPazhayaPadamWrong || progressRecord?.isPazhayaPadamNotGiven
-                                ? 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20'
-                                : 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20'
-                            }`}>
-                              {progressRecord
-                                  ? progressRecord.isPazhayaPadamWrong
-                                    ? '0 Pages (Wrong ❌)'
-                                    : progressRecord.isPazhayaPadamNotGiven
-                                    ? 'Not Given (തന്നില്ല)'
-                                    : `${progressRecord.pazhayaPadam ?? 0} ${(progressRecord.pazhayaPadam ?? 0) === 1 ? 'Page' : 'Pages'}`
-                                  : 'Not recorded yet'}
-                            </span>
-                          </div>
-                        </div>
+                          </>
+                        )}
                       </>
                     )}
                   </div>
@@ -609,17 +636,85 @@ export default function ParentHomePageView() {
               </div>
 
               <div className="flex flex-col gap-2.5">
-                {announcementsData.slice(0, 5).map((ann) => (
-                  <div
-                    key={ann._id}
-                    className="rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/80 dark:bg-gray-900/60 p-4 shadow-sm backdrop-blur-xl transition-all duration-300 hover:border-purple-500/30"
-                  >
-                    <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 leading-relaxed">{ann.message}</p>
-                    <p className="mt-1.5 text-[10px] font-extrabold text-gray-400">
-                      {new Date(ann.date || ann.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </p>
-                  </div>
-                ))}
+                {announcementsData.slice(0, 5).map((ann) => {
+                  let messageText = ann.message;
+                  // If it's an exam announcement, strip class names & teacher names to display ONLY Exam Name & Dates
+                  if (messageText.toLowerCase().includes('exam scheduled:')) {
+                    let cleaned = messageText.replace(/^exam scheduled:\s*/i, '');
+                    cleaned = cleaned.replace(/\s*for\s+[^(\n]+(?=\(|$)/i, '');
+                    cleaned = cleaned.replace(/\s*by\s+(ustaz|teacher|ustad)\s+[^\n(]+/i, '');
+                    messageText = `Exam Scheduled: ${cleaned.trim()}`;
+                  }
+
+                  return (
+                    <div
+                      key={ann._id}
+                      className="rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/80 dark:bg-gray-900/60 p-4 shadow-sm backdrop-blur-xl transition-all duration-300 hover:border-purple-500/30"
+                    >
+                      <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 leading-relaxed">{messageText}</p>
+                      <p className="mt-1.5 text-[10px] font-extrabold text-gray-400">
+                        {new Date(ann.date || ann.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {/* ── 6. BENTO GRID SECTION: EXAM RESULTS ─────────────────────────── */}
+          {examResults && examResults.length > 0 && (
+            <section className="flex flex-col gap-3">
+              <div className="flex items-center justify-between px-1">
+                <div className="flex items-center gap-2">
+                  <Award className="h-4 w-4 text-emerald-500" />
+                  <h2 className="text-[11px] font-extrabold tracking-widest text-gray-500 dark:text-gray-400 uppercase">
+                    Exam Results
+                  </h2>
+                </div>
+                <span className="rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                  Published Marks
+                </span>
+              </div>
+
+              <div className="flex flex-col gap-2.5">
+                {examResults.map((res) => {
+                  const examTitle = typeof res.examId === 'object' ? res.examId.title : 'Examination';
+                  const totalMarks = typeof res.examId === 'object' ? res.examId.totalMarks || res.maxMarks || 100 : res.maxMarks || 100;
+                  const passingMarks = typeof res.examId === 'object' ? res.examId.passingMarks || 35 : 35;
+                  const isPassed = res.marks >= passingMarks;
+
+                  return (
+                    <div
+                      key={res._id}
+                      className="rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/80 dark:bg-gray-900/60 p-4 shadow-sm backdrop-blur-xl flex items-center justify-between"
+                    >
+                      <div className="flex flex-col gap-0.5">
+                        <h3 className="font-extrabold text-xs text-gray-900 dark:text-white">{examTitle}</h3>
+                        <p className="text-[10px] text-gray-400">
+                          {res.subject ? `Subject: ${res.subject} • ` : ''}Standard: {res.standard}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <div className="text-right">
+                          <span className="text-sm font-extrabold text-gray-900 dark:text-white">
+                            {res.marks} <span className="text-[10px] text-gray-400 font-semibold">/ {totalMarks}</span>
+                          </span>
+                        </div>
+                        <span
+                          className={`rounded-full px-2.5 py-0.5 text-[10px] font-extrabold border ${
+                            isPassed
+                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                              : 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20'
+                          }`}
+                        >
+                          {isPassed ? 'Passed' : 'Failed'}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </section>
           )}

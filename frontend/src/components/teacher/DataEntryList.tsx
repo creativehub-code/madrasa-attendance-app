@@ -300,13 +300,14 @@ export default function DataEntryList() {
         const student = students.find((st) => st._id === draft.studentId);
         const category = getStudentCategory(student);
         const isQaida = category === 'Noorani Qaida';
+        const isNazira = category === 'Nazira' || (student as any)?.mode?.toLowerCase() === 'nazira';
 
         return {
           studentId: draft.studentId,
           juzuNumber: draft.juzuNumber ?? 1,
           puthiyaPadam: isQaida ? 0 : (draft.puthiyaPadam ?? 0),
-          juzuPadam: isQaida ? 0 : (draft.juzuPadam ?? 0),
-          pazhayaPadam: isQaida ? 0 : (draft.pazhayaPadam ?? 0),
+          juzuPadam: (isQaida || isNazira) ? 0 : (draft.juzuPadam ?? 0),
+          pazhayaPadam: (isQaida || isNazira) ? 0 : (draft.pazhayaPadam ?? 0),
           dowraCount: category === 'Dowra' ? (draft.juzuNumber ?? 1) : 0,
           category,
           isAbsent: draft.isAbsent,
@@ -553,63 +554,79 @@ export default function DataEntryList() {
             )}
 
             {/* Student header */}
-            <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 px-5 py-4">
-              <div className="flex items-center gap-3">
-                <div
-                  className={`flex h-12 w-12 items-center justify-center rounded-full text-lg font-bold ${
-                    isNeedsRevision
-                      ? 'bg-amber-100 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 ring-2 ring-amber-300 dark:ring-amber-700'
-                      : 'bg-madrasa-100 text-madrasa-700'
-                  }`}
-                >
-                  {student.name.charAt(0)}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h2 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                      {student.name}
-                      {student.currentJuzu && (
-                        <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs font-medium rounded-full border border-gray-200 dark:border-gray-700">
-                          Juzz {student.currentJuzu}
-                        </span>
-                      )}
-                      {student.status === 'Discontinued' && (
-                        <span className="px-2.5 py-0.5 bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 text-[10px] font-bold rounded-full border border-amber-300 dark:border-amber-700">
-                          Discontinued
-                        </span>
-                      )}
-                    </h2>
-                    {/* Visual UI Mode Indicator Badge */}
-                    {(() => {
-                      const category = getStudentCategory(student);
-                      if (category === 'Noorani Qaida') {
-                        return (
-                          <span className="px-2.5 py-0.5 bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 text-[10px] font-bold rounded-full border border-purple-300 dark:border-purple-700">
-                            Mode: Noorani Qaida
-                          </span>
-                        );
-                      }
-                      if (category === 'Dowra') {
-                        return (
-                          <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 text-[10px] font-bold rounded-full border border-emerald-300 dark:border-emerald-700">
-                            Mode: Dowra
-                          </span>
-                        );
-                      }
-                      return (
-                        <span className="px-2.5 py-0.5 bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 text-[10px] font-bold rounded-full border border-blue-300 dark:border-blue-700">
-                          Mode: Regular
-                        </span>
-                      );
-                    })()}
+            <header className="border-b border-gray-100 dark:border-gray-800">
+              <div className="flex items-center justify-between px-5 py-4">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`flex h-12 w-12 items-center justify-center rounded-full text-lg font-bold ${
+                      isNeedsRevision
+                        ? 'bg-amber-100 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 ring-2 ring-amber-300 dark:ring-amber-700'
+                        : 'bg-madrasa-100 text-madrasa-700'
+                    }`}
+                  >
+                    {student.name.charAt(0)}
                   </div>
-                  <p className="text-sm text-gray-400">ID: {student.rollNumber}</p>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        {student.name}
+                        {(() => {
+                          const category = getStudentCategory(student);
+                          const isQaida = category === 'Noorani Qaida';
+                          const isDowra = category === 'Dowra' || (student as any)?.mode === 'Dowra';
+                          const activeJuzu = draft.juzuNumber ?? 1;
+                          const badgeText = isDowra ? `Dowra ${activeJuzu}` : isQaida ? `Lesson ${activeJuzu}` : `Juz ${activeJuzu}`;
+                          return (
+                            <span className="px-2 py-0.5 bg-gray-100/80 dark:bg-gray-800/80 text-gray-600 dark:text-gray-300 text-xs font-medium rounded-full border border-gray-200/60 dark:border-gray-700/60">
+                              {badgeText}
+                            </span>
+                          );
+                        })()}
+                        {student.status === 'Discontinued' && (
+                          <span className="px-2.5 py-0.5 bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 text-[10px] font-bold rounded-full border border-amber-300 dark:border-amber-700">
+                            Discontinued
+                          </span>
+                        )}
+                      </h2>
+                      {/* Visual UI Mode Indicator Badge */}
+                      {(() => {
+                        const category = getStudentCategory(student);
+                        const isNazira = category === 'Nazira' || (student as any)?.mode?.toLowerCase() === 'nazira';
+                        if (category === 'Noorani Qaida') {
+                          return (
+                            <span className="px-2.5 py-0.5 bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 text-[10px] font-bold rounded-full border border-purple-300 dark:border-purple-700">
+                              Mode: Noorani Qaida
+                            </span>
+                          );
+                        }
+                        if (category === 'Dowra') {
+                          return (
+                            <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 text-[10px] font-bold rounded-full border border-emerald-300 dark:border-emerald-700">
+                              Mode: Dowra
+                            </span>
+                          );
+                        }
+                        if (isNazira) {
+                          return (
+                            <span className="px-2.5 py-0.5 bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 text-[10px] font-bold rounded-full border border-amber-300 dark:border-amber-700">
+                              Mode: Nazira
+                            </span>
+                          );
+                        }
+                        return (
+                          <span className="px-2.5 py-0.5 bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 text-[10px] font-bold rounded-full border border-blue-300 dark:border-blue-700">
+                            Mode: Regular
+                          </span>
+                        );
+                      })()}
+                    </div>
+                    <p className="text-sm text-gray-400">ID: {student.rollNumber}</p>
+                  </div>
                 </div>
               </div>
 
-              {/* Toggles Group */}
-              <div className="flex items-center gap-3">
-                {/* Needs Revision toggle button */}
+              {/* Progress Badges Bar */}
+              <div className="flex items-center justify-between gap-2 px-5 py-3 bg-gray-50/50 dark:bg-gray-800/30 border-b border-gray-100 dark:border-gray-800">
                 <button
                   type="button"
                   disabled={isDisabledOverall}
@@ -620,63 +637,72 @@ export default function DataEntryList() {
                       ...(nextState ? { puthiyaPadam: 0 } : {}),
                     });
                   }}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 border ${
-                    isNeedsRevision
-                      ? 'bg-amber-500 text-white border-amber-500 hover:bg-amber-600 shadow-sm'
-                      : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'
-                  } ${isDisabledOverall ? 'opacity-40 cursor-not-allowed' : ''}`}
+                  className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed ${
+                    draft.needsRevision
+                      ? 'bg-amber-500 text-white shadow ring-2 ring-amber-300 dark:ring-amber-600'
+                      : 'bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/60 hover:bg-amber-100 dark:hover:bg-amber-900/50'
+                  }`}
                 >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>{isNeedsRevision ? 'Revision Mode' : 'Needs Revision'}</span>
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  <span>Needs Revision</span>
                 </button>
 
-                {/* Absent toggle */}
-                <label className={`flex flex-col items-end gap-1 ${isStudentDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
-                  <span className="text-xs font-medium text-gray-500">Absent</span>
-                  <div className="relative">
+                <label className={`flex cursor-pointer items-center gap-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-800/50 px-3 py-1 ${student.status === 'Discontinued' ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                  <span className="text-xs font-bold text-gray-700 dark:text-gray-300">Absent</span>
+                  <div className="relative inline-flex items-center">
                     <input
                       type="checkbox"
-                      disabled={isStudentDisabled}
-                      className="sr-only"
+                      disabled={student.status === 'Discontinued'}
                       checked={draft.isAbsent}
                       onChange={(e) =>
                         updateDraft(student._id, {
                           isAbsent: e.target.checked,
                           ...(e.target.checked
-                            ? {
-                                puthiyaPadam: 0,
-                                juzuPadam: 0,
-                                pazhayaPadam: 0,
-                                needsRevision: false,
-                              }
+                            ? { puthiyaPadam: 0, juzuPadam: 0, pazhayaPadam: 0, needsRevision: false }
                             : {}),
                         })
                       }
+                      className="sr-only"
                     />
                     <div
-                      className={`h-7 w-12 rounded-full transition-colors ${
-                        draft.isAbsent ? 'bg-red-500' : 'bg-gray-200 dark:bg-gray-700'
+                      className={`h-6 w-11 rounded-full transition-colors duration-200 ease-in-out ${
+                        draft.isAbsent ? 'bg-red-600' : 'bg-gray-300 dark:bg-gray-700'
                       }`}
                     />
                     <div
-                      className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                        draft.isAbsent ? 'translate-x-6' : 'translate-x-1'
+                      className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-md transition-transform duration-200 ease-in-out ${
+                        draft.isAbsent ? 'translate-x-5' : 'translate-x-0'
                       }`}
                     />
                   </div>
                 </label>
               </div>
-            </div>
+            </header>
 
             {/* Data Entry Fields */}
             {(() => {
               const category = getStudentCategory(student);
               const isQaida = category === 'Noorani Qaida';
-              const isDowra = category === 'Dowra';
+              const isDowra = category === 'Dowra' || (student as any)?.mode === 'Dowra';
+              const isNazira = category === 'Nazira' || (student as any)?.mode?.toLowerCase() === 'nazira';
 
               let selectorLabel = 'Current Juzu';
               if (isQaida) selectorLabel = 'Current Lesson';
               if (isDowra) selectorLabel = 'Dowra Count';
+
+              const dowraQuickChips = [
+                { label: '1/4', value: 0.25 },
+                { label: '1/2', value: 0.5 },
+                { label: '3/4', value: 0.75 },
+                { label: '1', value: 1 },
+              ];
+
+              const naziraQuickChips = [
+                { label: '1 Page', value: 1 },
+                { label: '3 Pages', value: 3 },
+                { label: '5 Pages', value: 5 },
+                { label: '7 Pages', value: 7 },
+              ];
 
               return (
                 <div
@@ -689,6 +715,7 @@ export default function DataEntryList() {
                     <JuzuSelector
                       label={selectorLabel}
                       value={draft.juzuNumber ?? 1}
+                      max={isDowra ? 10 : 30}
                       onChange={(v) => {
                         updateDraft(student._id, { juzuNumber: v });
                         handleJuzuChange(student._id, v);
@@ -700,7 +727,7 @@ export default function DataEntryList() {
                   {/* Sub-inputs: Hidden for Noorani Qaida */}
                   {!isQaida && (
                     <>
-                      {/* Puthiya Padam / New Lesson Stepper */}
+                      {/* Puthiya Padam / Today Lesson Stepper */}
                       <div
                         className={`flex items-start justify-between px-5 py-3.5 ${
                           isNeedsRevision ? 'bg-amber-50/50 dark:bg-amber-950/30' : ''
@@ -712,7 +739,7 @@ export default function DataEntryList() {
                               isNeedsRevision ? 'text-amber-900 dark:text-amber-300' : 'text-gray-900 dark:text-white'
                             }`}
                           >
-                            {isDowra ? 'New Lesson (Juz #)' : 'Puthiya Padam'}
+                            {isNazira ? 'Today Lesson' : isDowra ? 'New Lesson' : 'Puthiya Padam'}
                           </p>
                           <p
                             className={`text-xs ${
@@ -721,8 +748,10 @@ export default function DataEntryList() {
                           >
                             {isNeedsRevision
                               ? 'Locked (Needs Revision)'
+                              : isNazira
+                              ? 'Pages Portion'
                               : isDowra
-                              ? 'Juz 1–30'
+                              ? 'Juz Portion'
                               : 'New Lesson (Lines)'}
                           </p>
                         </div>
@@ -732,7 +761,7 @@ export default function DataEntryList() {
                             value={draft.puthiyaPadam}
                             onChange={(v) => updateDraft(student._id, { puthiyaPadam: v })}
                             max={isDowra ? 30 : 999}
-                            step={1}
+                            step={isDowra ? 0.25 : 1}
                             isWrong={Boolean(draft.isPuthiyaPadamWrong)}
                             onToggleWrong={() => {
                               const nextState = !draft.isPuthiyaPadamWrong;
@@ -750,14 +779,10 @@ export default function DataEntryList() {
                               });
                             }}
                             quickChips={
-                              isDowra
-                                ? [
-                                    { label: 'Juz 1', value: 1 },
-                                    { label: 'Juz 5', value: 5 },
-                                    { label: 'Juz 10', value: 10 },
-                                    { label: 'Juz 15', value: 15 },
-                                    { label: 'Juz 30', value: 30 },
-                                  ]
+                              isNazira
+                                ? naziraQuickChips
+                                : isDowra
+                                ? dowraQuickChips
                                 : [
                                     { label: '5 Lines', value: 5 },
                                     { label: '10 Lines', value: 10 },
@@ -770,93 +795,105 @@ export default function DataEntryList() {
                         </div>
                       </div>
 
-                      {/* Juzu Padam / Current Sabqi Stepper */}
-                      <div className="flex items-start justify-between px-5 py-3.5">
-                        <div className="pt-1">
-                          <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                            {isDowra ? 'Current Sabqi (Juz #)' : 'Current Lesson / Juzu Padam'}
-                          </p>
-                          <p className="text-xs text-gray-400">
-                            {isDowra ? 'Sabqi Portion' : 'Current Lesson Portion'}
-                          </p>
-                        </div>
-                        <div className="shrink-0 block w-full max-w-[200px] text-right">
-                          <StepperField
-                            label=""
-                            value={draft.juzuPadam}
-                            onChange={(v) => updateDraft(student._id, { juzuPadam: v })}
-                            max={30}
-                            step={1}
-                            isWrong={Boolean(draft.isCurrentLessonWrong)}
-                            onToggleWrong={() => {
-                              const nextState = !draft.isCurrentLessonWrong;
-                              updateDraft(student._id, {
-                                isCurrentLessonWrong: nextState,
-                                ...(nextState ? { juzuPadam: 0 } : {}),
-                              });
-                            }}
-                            isNotGiven={Boolean(draft.isJuzuPadamNotGiven)}
-                            onToggleNotGiven={() => {
-                              const nextState = !draft.isJuzuPadamNotGiven;
-                              updateDraft(student._id, {
-                                isJuzuPadamNotGiven: nextState,
-                                ...(nextState ? { juzuPadam: 0 } : {}),
-                              });
-                            }}
-                            quickChips={[
-                              { label: '5 Pages', value: 5 },
-                              { label: '10 Pages', value: 10 },
-                              { label: '15 Pages', value: 15 },
-                              { label: '20 Pages', value: 20 },
-                            ]}
-                            disabled={isDisabledOverall}
-                          />
-                        </div>
-                      </div>
+                      {!isNazira && (
+                        <>
+                          {/* Juzu Padam / Current Sabqi Stepper */}
+                          <div className="flex items-start justify-between px-5 py-3.5">
+                            <div className="pt-1">
+                              <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                                {isDowra ? 'Current Sabqi' : 'Current Lesson / Juzu Padam'}
+                              </p>
+                              <p className="text-xs text-gray-400">
+                                {isDowra ? 'Sabqi Portion' : 'Current Lesson Portion'}
+                              </p>
+                            </div>
+                            <div className="shrink-0 block w-full max-w-[200px] text-right">
+                              <StepperField
+                                label=""
+                                value={draft.juzuPadam}
+                                onChange={(v) => updateDraft(student._id, { juzuPadam: v })}
+                                max={30}
+                                step={isDowra ? 0.25 : 1}
+                                isWrong={Boolean(draft.isCurrentLessonWrong)}
+                                onToggleWrong={() => {
+                                  const nextState = !draft.isCurrentLessonWrong;
+                                  updateDraft(student._id, {
+                                    isCurrentLessonWrong: nextState,
+                                    ...(nextState ? { juzuPadam: 0 } : {}),
+                                  });
+                                }}
+                                isNotGiven={Boolean(draft.isJuzuPadamNotGiven)}
+                                onToggleNotGiven={() => {
+                                  const nextState = !draft.isJuzuPadamNotGiven;
+                                  updateDraft(student._id, {
+                                    isJuzuPadamNotGiven: nextState,
+                                    ...(nextState ? { juzuPadam: 0 } : {}),
+                                  });
+                                }}
+                                quickChips={
+                                  isDowra
+                                    ? dowraQuickChips
+                                    : [
+                                        { label: '5 Pages', value: 5 },
+                                        { label: '10 Pages', value: 10 },
+                                        { label: '15 Pages', value: 15 },
+                                        { label: '20 Pages', value: 20 },
+                                      ]
+                                }
+                                disabled={isDisabledOverall}
+                              />
+                            </div>
+                          </div>
 
-                      {/* Pazhaya Padam / Old Sabqi Stepper */}
-                      <div className="flex items-start justify-between px-5 py-3.5">
-                        <div className="pt-1">
-                          <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                            {isDowra ? 'Old Sabqi (Juz #)' : 'Pazhaya Padam'}
-                          </p>
-                          <p className="text-xs text-gray-400">
-                            {isDowra ? 'Revision Portion' : 'Revision Portion'}
-                          </p>
-                        </div>
-                        <div className="shrink-0 block w-full max-w-[200px] text-right">
-                          <StepperField
-                            label=""
-                            value={draft.pazhayaPadam}
-                            onChange={(v) => updateDraft(student._id, { pazhayaPadam: v })}
-                            max={isDowra ? 30 : 999}
-                            step={1}
-                            isWrong={Boolean(draft.isPazhayaPadamWrong)}
-                            onToggleWrong={() => {
-                              const nextState = !draft.isPazhayaPadamWrong;
-                              updateDraft(student._id, {
-                                isPazhayaPadamWrong: nextState,
-                                ...(nextState ? { pazhayaPadam: 0 } : {}),
-                              });
-                            }}
-                            isNotGiven={Boolean(draft.isPazhayaPadamNotGiven)}
-                            onToggleNotGiven={() => {
-                              const nextState = !draft.isPazhayaPadamNotGiven;
-                              updateDraft(student._id, {
-                                isPazhayaPadamNotGiven: nextState,
-                                ...(nextState ? { pazhayaPadam: 0 } : {}),
-                              });
-                            }}
-                            quickChips={[
-                              { label: '5 Pages', value: 5 },
-                              { label: '10 Pages', value: 10 },
-                              { label: '15 Pages', value: 15 },
-                              { label: '20 Pages', value: 20 },
-                            ]}
-                            disabled={isDisabledOverall}
-                          />
-                        </div>
-                      </div>
+                          {/* Pazhaya Padam / Old Sabqi Stepper */}
+                          <div className="flex items-start justify-between px-5 py-3.5">
+                            <div className="pt-1">
+                              <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                                {isDowra ? 'Old Sabqi' : 'Pazhaya Padam'}
+                              </p>
+                              <p className="text-xs text-gray-400">
+                                {isDowra ? 'Revision Portion' : 'Revision Portion'}
+                              </p>
+                            </div>
+                            <div className="shrink-0 block w-full max-w-[200px] text-right">
+                              <StepperField
+                                label=""
+                                value={draft.pazhayaPadam}
+                                onChange={(v) => updateDraft(student._id, { pazhayaPadam: v })}
+                                max={isDowra ? 30 : 999}
+                                step={isDowra ? 0.25 : 1}
+                                isWrong={Boolean(draft.isPazhayaPadamWrong)}
+                                onToggleWrong={() => {
+                                  const nextState = !draft.isPazhayaPadamWrong;
+                                  updateDraft(student._id, {
+                                    isPazhayaPadamWrong: nextState,
+                                    ...(nextState ? { pazhayaPadam: 0 } : {}),
+                                  });
+                                }}
+                                isNotGiven={Boolean(draft.isPazhayaPadamNotGiven)}
+                                onToggleNotGiven={() => {
+                                  const nextState = !draft.isPazhayaPadamNotGiven;
+                                  updateDraft(student._id, {
+                                    isPazhayaPadamNotGiven: nextState,
+                                    ...(nextState ? { pazhayaPadam: 0 } : {}),
+                                  });
+                                }}
+                                quickChips={
+                                  isDowra
+                                    ? dowraQuickChips
+                                    : [
+                                        { label: '5 Pages', value: 5 },
+                                        { label: '10 Pages', value: 10 },
+                                        { label: '15 Pages', value: 15 },
+                                        { label: '20 Pages', value: 20 },
+                                      ]
+                                }
+                                disabled={isDisabledOverall}
+                              />
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </>
                   )}
                 </div>

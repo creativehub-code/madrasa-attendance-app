@@ -19,6 +19,7 @@ const {
   sendFeedback,
   getParentReports,
   markReportAsRead,
+  getApprovedExamResults,
 } = require('../controllers/parent.controller');
 
 const router = express.Router();
@@ -32,6 +33,7 @@ router.get('/progress/daily', validateRequest({ query: dailyProgressQuerySchema 
 router.get('/progress/monthly', validateRequest({ query: monthlyProgressQuerySchema }), assertParentOwnsStudent, getMonthlyProgress);
 
 router.get('/announcements', getAnnouncements);
+router.get('/exams/results', getApprovedExamResults);
 
 // Order: ownership check → existing express-validator chain → Zod body schema → controller
 router.post(

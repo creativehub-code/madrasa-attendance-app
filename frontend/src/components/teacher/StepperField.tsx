@@ -120,11 +120,26 @@ export default function StepperField({
         >
           −
         </button>
-        <span className={`min-w-[4rem] text-center text-xl font-bold tabular-nums ${
-          isWrong ? 'text-red-600 dark:text-red-400' : isNotGiven ? 'text-orange-600 dark:text-orange-400' : 'text-gray-900 dark:text-white'
-        }`}>
-          {formattedDisplay}
-        </span>
+        <div className="relative flex items-center justify-center min-w-[4rem]">
+          <input
+            type="number"
+            step={step}
+            min={min}
+            max={max}
+            disabled={isLocked}
+            value={value}
+            onChange={(e) => {
+              const val = parseFloat(e.target.value);
+              onChange(isNaN(val) ? 0 : Math.min(max, Math.max(min, val)));
+            }}
+            className="sr-only"
+          />
+          <span className={`text-center text-xl font-bold tabular-nums ${
+            isWrong ? 'text-red-600 dark:text-red-400' : isNotGiven ? 'text-orange-600 dark:text-orange-400' : 'text-gray-900 dark:text-white'
+          }`}>
+            {formattedDisplay}
+          </span>
+        </div>
         <button
           type="button"
           onClick={increment}

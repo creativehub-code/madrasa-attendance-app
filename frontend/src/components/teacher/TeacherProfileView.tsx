@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import {
@@ -21,8 +21,25 @@ import {
   Phone,
   Mail,
   BookOpen,
+  GraduationCap,
+  Calendar,
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  Save,
 } from 'lucide-react';
-import { fetchMe, changePassword as apiChangePassword, logoutUser, type UserProfile } from '@/lib/api';
+import {
+  fetchMe,
+  changePassword as apiChangePassword,
+  logoutUser,
+  type UserProfile,
+  fetchExams,
+  fetchTeacherStudents,
+  fetchExamMarks,
+  submitExamMarks,
+  type Examination,
+  type ExamMark,
+} from '@/lib/api';
 import { useAdminTheme } from '@/context/AdminThemeContext';
 
 export default function TeacherProfileView() {
@@ -55,6 +72,29 @@ export default function TeacherProfileView() {
   });
   const profile = profileData || null;
 
+  // Fetch active/upcoming exams
+  const { data: examsData } = useQuery({
+    queryKey: ['teacherExams', profile?.className],
+    queryFn: async () => {
+      const res = await fetchExams(profile?.className);
+      return res.data.exams || [];
+    },
+    enabled: !!profile,
+    staleTime: 2 * 60 * 1000,
+  });
+  const activeExamsList: Examination[] = examsData || [];
+
+  // Fetch teacher's students for marks entry
+  const { data: studentsData } = useQuery({
+    queryKey: ['teacherStudents'],
+    queryFn: async () => {
+      const res = await fetchTeacherStudents();
+      return res.data.students || [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const studentsList = studentsData || [];
+
   // ── Settings ────────────────────────────────────────────────────────────────
   const { darkMode, toggleDarkMode } = useAdminTheme();
   const [language, setLanguage] = useState('English (US)');
@@ -65,6 +105,51 @@ export default function TeacherProfileView() {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showSupportModal, setShowSupportModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showExamMarksModal, setShowExamMarksModal] = useState(false);
+
+  // ── Exam Marks State ────────────────────────────────────────────────────────
+  const [selectedExamId, setSelectedExamId] = useState<string>('');
+  const [marksMap, setMarksMap] = useState<Record<string, number>>({});
+  const [remarksMap, setRemarksMap] = useState<Record<string, string>>({});
+  const [isSubmittingMarks, setIsSubmittingMarks] = useState(false);
+  const [existingMarksList, setExistingMarksList] = useState<ExamMark[]>([]);
+  const [marksLoading, setMarksLoading] = useState(false);
+
+  // Initialize selected exam when modal opens or exams change
+  useEffect(() => {
+    if (showExamMarksModal && activeExamsList.length > 0 && !selectedExamId) {
+      setSelectedExamId(activeExamsList[0]._id);
+    }
+  }, [showExamMarksModal, activeExamsList, selectedExamId]);
+
+  // Load existing exam marks when selectedExamId changes
+  useEffect(() => {
+    if (showExamMarksModal && selectedExamId) {
+      setMarksLoading(true);
+      fetchExamMarks(selectedExamId, profile?.className)
+        .then((res) => {
+          const fetched = res.data.marks || [];
+          setExistingMarksList(fetched);
+          const initialMarks: Record<string, number> = {};
+          const initialRemarks: Record<string, string> = {};
+          fetched.forEach((m) => {
+            const sid = typeof m.studentId === 'object' ? m.studentId._id : m.studentId;
+            if (sid) {
+              initialMarks[sid] = m.marks;
+              if (m.remarks) initialRemarks[sid] = m.remarks;
+            }
+          });
+          setMarksMap(initialMarks);
+          setRemarksMap(initialRemarks);
+        })
+        .catch(() => {})
+        .finally(() => setMarksLoading(false));
+    }
+  }, [showExamMarksModal, selectedExamId, profile?.className]);
+
+  const selectedExam = activeExamsList.find((e) => e._id === selectedExamId) || activeExamsList[0] || null;
+  const isSelectedExamApproved = existingMarksList.length > 0 && existingMarksList.every((m) => m.isApproved === true);
+  const isSelectedExamPending = existingMarksList.length > 0 && existingMarksList.some((m) => m.isApproved === false);
 
   // ── Password form ───────────────────────────────────────────────────────────
   const [currentPassword, setCurrentPassword] = useState('');
@@ -129,6 +214,42 @@ export default function TeacherProfileView() {
     setTimeout(() => {
       logoutUser();
     }, 300);
+  };
+
+  const handleExamMarksSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedExamId) {
+      showNotification('Please select an examination');
+      return;
+    }
+
+    setIsSubmittingMarks(true);
+    try {
+      const marksPayload = studentsList.map((st) => ({
+        studentId: st._id || (st as any).id,
+        marks: Number(marksMap[st._id || (st as any).id] ?? 0),
+        maxMarks: selectedExam?.totalMarks || 100,
+        remarks: remarksMap[st._id || (st as any).id] || '',
+      }));
+
+      await submitExamMarks(selectedExamId, {
+        standard: profile?.className,
+        marks: marksPayload,
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['teacherExams'] });
+      queryClient.invalidateQueries({ queryKey: ['examMarks', selectedExamId] });
+
+      showNotification('Marks submitted successfully! Awaiting Admin Approval.');
+      
+      // Refresh marks list
+      const res = await fetchExamMarks(selectedExamId, profile?.className);
+      setExistingMarksList(res.data.marks || []);
+    } catch (err) {
+      showNotification(err instanceof Error ? err.message : 'Failed to submit exam marks');
+    } finally {
+      setIsSubmittingMarks(false);
+    }
   };
 
   // Display name: format username nicely (capitalise first letter of each word)
@@ -308,6 +429,31 @@ export default function TeacherProfileView() {
               </div>
             </div>
             <ChevronRight className="h-4 w-4 text-gray-400" />
+          </button>
+
+          {/* Examinations & Marks Entry */}
+          <button
+            type="button"
+            onClick={() => setShowExamMarksModal(true)}
+            className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 dark:hover:bg-gray-700/40 transition group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
+                <GraduationCap className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-sm text-gray-900 dark:text-white">Examinations & Marks</h3>
+                  {activeExamsList && activeExamsList.length > 0 && (
+                    <span className="rounded-full bg-purple-500/10 px-2 py-0.5 text-[10px] font-extrabold text-purple-600 dark:text-purple-300 border border-purple-500/20">
+                      {activeExamsList.length} Exam{activeExamsList.length > 1 ? 's' : ''}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Enter & submit exam marks for admin approval</p>
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-gray-400 group-hover:translate-x-0.5 transition-transform" />
           </button>
 
           {/* Logout Button */}
@@ -559,6 +705,157 @@ export default function TeacherProfileView() {
           </div>
         </div>
       )}
+
+      {/* ── MODAL 5: EXAMINATIONS & MARKS ENTRY MODAL ─────────────────────── */}
+      {showExamMarksModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 p-4 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="w-full max-w-md max-h-[85vh] overflow-y-auto rounded-3xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-xl animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300">
+                  <GraduationCap className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-gray-900 dark:text-white">Exam Marks Entry</h3>
+                  <p className="text-[11px] text-gray-400">{classLabel}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowExamMarksModal(false)}
+                className="rounded-full p-1 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {activeExamsList.length === 0 ? (
+              <div className="py-12 text-center text-xs text-gray-400 flex flex-col items-center justify-center gap-2">
+                <Calendar className="h-8 w-8 text-gray-300 dark:text-gray-600" />
+                <p>No active or scheduled examinations found for {classLabel}.</p>
+              </div>
+            ) : (
+              <form onSubmit={handleExamMarksSubmit} className="mt-4 flex flex-col gap-4">
+                {/* Select Examination */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                    Select Examination
+                  </label>
+                  <select
+                    value={selectedExamId}
+                    onChange={(e) => setSelectedExamId(e.target.value)}
+                    className="w-full rounded-2xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 p-3 text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-purple-500"
+                  >
+                    {activeExamsList.map((ex) => (
+                      <option key={ex._id} value={ex._id}>
+                        {ex.title} (Max Marks: {ex.totalMarks || 100})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Status Badge */}
+                <div className="flex items-center justify-between p-3 rounded-2xl bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-700 text-xs">
+                  <span className="font-bold text-gray-500 dark:text-gray-400">Approval Status:</span>
+                  {isSelectedExamApproved ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-3 py-1 text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Approved & Published
+                    </span>
+                  ) : isSelectedExamPending ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-3 py-1 text-[11px] font-extrabold text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                      <Clock className="h-3.5 w-3.5" />
+                      Awaiting Admin Approval
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-gray-200 dark:bg-gray-600 px-3 py-1 text-[11px] font-bold text-gray-600 dark:text-gray-300">
+                      Not Submitted
+                    </span>
+                  )}
+                </div>
+
+                {/* Student Marks List */}
+                <div className="flex flex-col gap-3">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400">
+                    Student Marks ({studentsList.length})
+                  </h4>
+
+                  {marksLoading ? (
+                    <div className="py-6 text-center text-xs text-gray-400 flex items-center justify-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-purple-500" />
+                      <span>Loading existing marks…</span>
+                    </div>
+                  ) : studentsList.length === 0 ? (
+                    <p className="text-xs text-gray-400 italic">No students enrolled in this class.</p>
+                  ) : (
+                    <div className="flex flex-col gap-2.5 max-h-60 overflow-y-auto pr-1">
+                      {studentsList.map((st) => {
+                        const sid = st._id || (st as any).id;
+                        return (
+                          <div
+                            key={sid}
+                            className="p-3 rounded-2xl bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-700 flex flex-col gap-2"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="font-bold text-xs text-gray-900 dark:text-white">{st.name}</p>
+                                <p className="text-[10px] text-gray-400">Adm #: {st.admissionNumber}</p>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={selectedExam?.totalMarks || 100}
+                                  value={marksMap[sid] ?? ''}
+                                  onChange={(e) => {
+                                    const val = e.target.value === '' ? 0 : Number(e.target.value);
+                                    setMarksMap((prev) => ({ ...prev, [sid]: val }));
+                                  }}
+                                  disabled={isSelectedExamApproved}
+                                  placeholder="0"
+                                  className="w-16 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 p-2 text-center font-bold text-xs text-gray-900 dark:text-white outline-none focus:border-purple-500 disabled:opacity-60"
+                                />
+                                <span className="text-[10px] text-gray-400 font-bold">
+                                  / {selectedExam?.totalMarks || 100}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-2 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowExamMarksModal(false)}
+                    className="flex-1 rounded-2xl border border-gray-200 dark:border-gray-700 py-3 text-xs font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingMarks || isSelectedExamApproved || studentsList.length === 0}
+                    className="flex-1 rounded-2xl bg-purple-700 py-3 text-xs font-bold text-white shadow-md hover:bg-purple-800 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  >
+                    {isSubmittingMarks ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4" />
+                        <span>Submit Marks</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

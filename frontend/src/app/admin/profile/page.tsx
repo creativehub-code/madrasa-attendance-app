@@ -26,7 +26,11 @@ import {
   BookOpen,
   Plus,
   Trash2,
+  CheckCircle2,
+  Award,
+  Clock,
 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAdminTheme } from '@/context/AdminThemeContext';
 import {
   fetchMe,
@@ -35,10 +39,14 @@ import {
   type UserProfile,
   fetchExams,
   createExam,
+  deleteExam,
   fetchSyllabus,
   updateSyllabus,
+  fetchExamMarks,
+  approveExamMarks,
   type Examination,
   type Syllabus,
+  type ExamMark,
 } from '@/lib/api';
 
 const AVAILABLE_STANDARDS = [
@@ -79,6 +87,13 @@ export default function AdminProfilePage() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showExamModal, setShowExamModal] = useState(false);
   const [showSyllabusModal, setShowSyllabusModal] = useState(false);
+  const [showReviewMarksModal, setShowReviewMarksModal] = useState(false);
+
+  // Review & Approve Marks state
+  const [reviewExamId, setReviewExamId] = useState<string>('');
+  const [reviewMarksList, setReviewMarksList] = useState<ExamMark[]>([]);
+  const [marksReviewLoading, setMarksReviewLoading] = useState(false);
+  const [approvingMarks, setApprovingMarks] = useState(false);
 
   // Password state
   const [currentPassword, setCurrentPassword] = useState('');
@@ -88,16 +103,48 @@ export default function AdminProfilePage() {
   const [passwordSubmitting, setPasswordSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  const queryClient = useQueryClient();
+
   // Examination state
   const [exams, setExams] = useState<Examination[]>([]);
   const [examLoading, setExamLoading] = useState(false);
   const [examSubmitting, setExamSubmitting] = useState(false);
+  const [deletingExamId, setDeletingExamId] = useState<string | null>(null);
   const [examTitle, setExamTitle] = useState('');
   const [examStartDate, setExamStartDate] = useState('');
   const [examEndDate, setExamEndDate] = useState('');
   const [selectedStandards, setSelectedStandards] = useState<string[]>([]);
   const [passingMarks, setPassingMarks] = useState(35);
   const [totalMarks, setTotalMarks] = useState(100);
+
+  const handleDeleteExam = async (examId: string, title: string) => {
+    if (!window.confirm(`Are you sure you want to delete the scheduled exam "${title}"?`)) {
+      return;
+    }
+
+    setDeletingExamId(examId);
+    try {
+      await deleteExam(examId);
+
+      // Real-Time Dashboard Sync: Invalidate React Query caches so Teacher & Parent dashboards update instantly
+      queryClient.invalidateQueries({ queryKey: ['exams'] });
+      queryClient.invalidateQueries({ queryKey: ['announcements'] });
+      queryClient.invalidateQueries({ queryKey: ['parentAnnouncements'] });
+      queryClient.invalidateQueries({ queryKey: ['studentExams'] });
+      queryClient.invalidateQueries({ queryKey: ['teacherStudents'] });
+      queryClient.invalidateQueries({ queryKey: ['parentDashboard'] });
+
+      showNotification('Exam deleted successfully');
+
+      // Refresh list
+      const updated = await fetchExams();
+      setExams(updated.data.exams || []);
+    } catch (err) {
+      showNotification(err instanceof Error ? err.message : 'Failed to delete exam');
+    } finally {
+      setDeletingExamId(null);
+    }
+  };
 
   // Syllabus state
   const [syllabusStandard, setSyllabusStandard] = useState(AVAILABLE_STANDARDS[0]);
@@ -125,16 +172,59 @@ export default function AdminProfilePage() {
       .finally(() => setProfileLoading(false));
   }, []);
 
-  // Fetch Exams when Examination Modal opens
+  // Fetch Exams when Examination Modal opens or Review Modal opens
   useEffect(() => {
-    if (showExamModal) {
+    if (showExamModal || showReviewMarksModal) {
       setExamLoading(true);
       fetchExams()
-        .then((res) => setExams(res.data.exams || []))
+        .then((res) => {
+          const fetchedExams = res.data.exams || [];
+          setExams(fetchedExams);
+          if (showReviewMarksModal && !reviewExamId && fetchedExams.length > 0) {
+            setReviewExamId(fetchedExams[0]._id);
+          }
+        })
         .catch(() => {})
         .finally(() => setExamLoading(false));
     }
-  }, [showExamModal]);
+  }, [showExamModal, showReviewMarksModal]);
+
+  // Fetch submitted marks when Review Marks modal opens or reviewExamId changes
+  useEffect(() => {
+    if (showReviewMarksModal && reviewExamId) {
+      setMarksReviewLoading(true);
+      fetchExamMarks(reviewExamId)
+        .then((res) => setReviewMarksList(res.data.marks || []))
+        .catch(() => {})
+        .finally(() => setMarksReviewLoading(false));
+    }
+  }, [showReviewMarksModal, reviewExamId]);
+
+  const handleApproveMarks = async () => {
+    if (!reviewExamId) return;
+    setApprovingMarks(true);
+    try {
+      await approveExamMarks(reviewExamId);
+
+      // Real-Time Dashboard Sync
+      queryClient.invalidateQueries({ queryKey: ['exams'] });
+      queryClient.invalidateQueries({ queryKey: ['examMarks', reviewExamId] });
+      queryClient.invalidateQueries({ queryKey: ['parentDashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['parentExamResults'] });
+      queryClient.invalidateQueries({ queryKey: ['announcements'] });
+      queryClient.invalidateQueries({ queryKey: ['parentAnnouncements'] });
+
+      showNotification('Exam marks approved & published for parents successfully!');
+
+      // Refresh marks list
+      const res = await fetchExamMarks(reviewExamId);
+      setReviewMarksList(res.data.marks || []);
+    } catch (err) {
+      showNotification(err instanceof Error ? err.message : 'Failed to approve exam marks');
+    } finally {
+      setApprovingMarks(false);
+    }
+  };
 
   // Fetch Syllabus when Syllabus Modal opens or standard changes
   useEffect(() => {
@@ -212,6 +302,14 @@ export default function AdminProfilePage() {
         passingMarks,
         totalMarks,
       });
+
+      // Real-Time Dashboard Sync: Invalidate React Query caches so Teacher & Parent dashboards update instantly
+      queryClient.invalidateQueries({ queryKey: ['exams'] });
+      queryClient.invalidateQueries({ queryKey: ['announcements'] });
+      queryClient.invalidateQueries({ queryKey: ['parentAnnouncements'] });
+      queryClient.invalidateQueries({ queryKey: ['studentExams'] });
+      queryClient.invalidateQueries({ queryKey: ['teacherStudents'] });
+      queryClient.invalidateQueries({ queryKey: ['parentDashboard'] });
 
       showNotification('Exam scheduled successfully & teachers notified!');
       setExamTitle('');
@@ -430,6 +528,24 @@ export default function AdminProfilePage() {
               <div>
                 <h3 className="font-bold text-sm text-gray-900 dark:text-white">Syllabus</h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Define subjects list per standard</p>
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-gray-400 group-hover:translate-x-0.5 transition-transform" />
+          </button>
+
+          {/* Review Exam Marks */}
+          <button
+            type="button"
+            onClick={() => setShowReviewMarksModal(true)}
+            className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 dark:hover:bg-gray-700/40 transition group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
+                <Award className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-gray-900 dark:text-white">Review & Approve Exam Marks</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Review teacher mark entries & publish to parents</p>
               </div>
             </div>
             <ChevronRight className="h-4 w-4 text-gray-400 group-hover:translate-x-0.5 transition-transform" />
@@ -671,10 +787,25 @@ export default function AdminProfilePage() {
                       className="p-3.5 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-800 text-xs flex flex-col gap-1"
                     >
                       <div className="flex items-center justify-between font-bold text-gray-900 dark:text-white">
-                        <span>{ex.title}</span>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-extrabold">
-                          {ex.status}
-                        </span>
+                        <span className="truncate pr-2">{ex.title}</span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-extrabold">
+                            {ex.status}
+                          </span>
+                          <button
+                            type="button"
+                            disabled={deletingExamId === ex._id}
+                            onClick={() => handleDeleteExam(ex._id, ex.title)}
+                            title="Delete scheduled exam"
+                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-500/10 text-red-600 hover:bg-red-500 hover:text-white dark:bg-red-950/40 dark:text-red-400 dark:hover:bg-red-600 dark:hover:text-white transition active:scale-95 disabled:opacity-50"
+                          >
+                            {deletingExamId === ex._id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3.5 w-3.5" />
+                            )}
+                          </button>
+                        </div>
                       </div>
                       <div className="text-gray-500 dark:text-gray-400 text-[11px]">
                         Classes: {ex.standards.join(', ')}
@@ -931,6 +1062,149 @@ export default function AdminProfilePage() {
                 Log Out
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: REVIEW & APPROVE EXAM MARKS ─────────────────────────────── */}
+      {showReviewMarksModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 p-4 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="w-full max-w-md max-h-[85vh] overflow-y-auto rounded-3xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm animate-in zoom-in-95 duration-200 ease-out">
+            <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-gray-800 sticky top-0 bg-white dark:bg-gray-900 z-10">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300">
+                  <Award className="h-4 w-4" />
+                </div>
+                <h3 className="font-extrabold text-base text-gray-900 dark:text-white">Review & Approve Marks</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowReviewMarksModal(false)}
+                className="rounded-full p-1.5 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {exams.length === 0 ? (
+              <div className="py-12 text-center text-xs text-gray-400 flex flex-col items-center justify-center gap-2">
+                <Calendar className="h-8 w-8 text-gray-300 dark:text-gray-600" />
+                <p>No exams scheduled yet.</p>
+              </div>
+            ) : (
+              <div className="mt-4 flex flex-col gap-4">
+                {/* Exam selector */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                    Select Examination
+                  </label>
+                  <select
+                    value={reviewExamId}
+                    onChange={(e) => setReviewExamId(e.target.value)}
+                    className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50 p-3.5 text-xs font-bold text-gray-900 dark:text-white outline-none focus:ring-1 focus:ring-purple-500 transition"
+                  >
+                    {exams.map((ex) => (
+                      <option key={ex._id} value={ex._id}>
+                        {ex.title} ({ex.standards.join(', ')})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Submitted Marks list */}
+                <div className="flex flex-col gap-2.5">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400">
+                      Submitted Marks ({reviewMarksList.length})
+                    </h4>
+                    {reviewMarksList.length > 0 && (
+                      <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${
+                        reviewMarksList.every((m) => m.isApproved)
+                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                          : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                      }`}>
+                        {reviewMarksList.every((m) => m.isApproved) ? 'All Approved' : 'Pending Approval'}
+                      </span>
+                    )}
+                  </div>
+
+                  {marksReviewLoading ? (
+                    <div className="py-8 text-center text-xs text-gray-400 flex items-center justify-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-purple-500" />
+                      <span>Loading mark submissions…</span>
+                    </div>
+                  ) : reviewMarksList.length === 0 ? (
+                    <div className="py-8 text-center text-xs text-gray-400 italic bg-gray-50 dark:bg-gray-800/40 rounded-2xl p-4">
+                      No mark entries submitted by teachers for this exam yet.
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2 max-h-60 overflow-y-auto pr-1">
+                      {reviewMarksList.map((m) => {
+                        const stName = typeof m.studentId === 'object' ? m.studentId.name : 'Student';
+                        const admNo = typeof m.studentId === 'object' ? m.studentId.admissionNumber : '';
+                        return (
+                          <div
+                            key={m._id}
+                            className="p-3 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-800 flex items-center justify-between text-xs"
+                          >
+                            <div>
+                              <p className="font-bold text-gray-900 dark:text-white">{stName}</p>
+                              <p className="text-[10px] text-gray-400">
+                                Class: {m.standard} {admNo ? `• Adm #: ${admNo}` : ''}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-extrabold text-sm text-gray-900 dark:text-white">
+                                {m.marks} / {m.maxMarks}
+                              </span>
+                              {m.isApproved ? (
+                                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                                  Approved
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
+                                  Pending
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Action button */}
+                <div className="mt-2 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowReviewMarksModal(false)}
+                    className="flex-1 rounded-2xl border border-gray-200 dark:border-gray-800 py-3 text-xs font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleApproveMarks}
+                    disabled={
+                      approvingMarks ||
+                      reviewMarksList.length === 0 ||
+                      reviewMarksList.every((m) => m.isApproved)
+                    }
+                    className="flex-1 rounded-2xl bg-emerald-600 py-3 text-xs font-bold text-white shadow-md hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-1.5 transition active:scale-95"
+                  >
+                    {approvingMarks ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span>Approve & Publish</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

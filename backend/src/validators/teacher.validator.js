@@ -8,9 +8,9 @@ const progressEntryRules = [
     .withMessage('studentId must be a valid MongoDB ObjectId'),
   body('puthiyaPadamLines')
     .optional()
-    .isInt({ min: 0, max: 999 })
+    .isFloat({ min: 0, max: 999 })
     .withMessage('puthiyaPadamLines must be 0–999')
-    .toInt(),
+    .toFloat(),
   body('juzuNumber')
     .optional({ nullable: true })
     .isInt({ min: 1, max: 30 })
@@ -18,9 +18,9 @@ const progressEntryRules = [
     .toInt(),
   body('pazhayaPadamPages')
     .optional()
-    .isInt({ min: 0, max: 999 })
+    .isFloat({ min: 0, max: 999 })
     .withMessage('pazhayaPadamPages must be 0–999')
-    .toInt(),
+    .toFloat(),
   body('juzuPadamPortion')
     .optional()
     .isString()
@@ -49,14 +49,14 @@ const submitProgressValidator = [
     .withMessage('studentId must be a valid MongoDB ObjectId'),
   body('entries.*.puthiyaPadamLines')
     .optional()
-    .isInt({ min: 0, max: 999 })
+    .isFloat({ min: 0, max: 999 })
     .withMessage('puthiyaPadamLines must be 0–999')
-    .toInt(),
+    .toFloat(),
   body('entries.*.puthiyaPadam')
     .optional({ nullable: true })
-    .isInt({ min: 0, max: 999 })
+    .isFloat({ min: 0, max: 999 })
     .withMessage('puthiyaPadam must be 0–999')
-    .toInt(),
+    .toFloat(),
   body('entries.*.juzuPadam')
     .optional({ nullable: true })
     .isFloat({ min: 0, max: 999 })
@@ -78,14 +78,14 @@ const submitProgressValidator = [
     .withMessage('Invalid category'),
   body('entries.*.pazhayaPadamPages')
     .optional()
-    .isInt({ min: 0, max: 999 })
+    .isFloat({ min: 0, max: 999 })
     .withMessage('pazhayaPadamPages must be 0–999')
-    .toInt(),
+    .toFloat(),
   body('entries.*.pazhayaPadam')
     .optional({ nullable: true })
-    .isInt({ min: 0, max: 999 })
+    .isFloat({ min: 0, max: 999 })
     .withMessage('pazhayaPadam must be 0–999')
-    .toInt(),
+    .toFloat(),
   body('entries.*.juzuPadamPortion')
     .optional()
     .isString()

@@ -683,6 +683,7 @@ export interface ParentChild {
   currentJuzuNumber: number;
   dowraCount?: number;
   category?: string;
+  mode?: string;
   needsRevision: boolean;
   revisionReason?: string;
 }
@@ -703,7 +704,7 @@ export interface SchoolProgressItem {
 }
 
 export interface ParentDailyProgressResponse {
-  student: { id: string; name: string; admissionNumber: string; className?: string; section?: string; academicYear?: string };
+  student: { id: string; name: string; admissionNumber: string; className?: string; section?: string; academicYear?: string; mode?: string; category?: string };
   progress: {
     _id: string;
     studentId: string;
@@ -854,7 +855,7 @@ export interface Examination {
 
 export interface ExamMark {
   _id?: string;
-  examId: string;
+  examId: { _id: string; title: string; startDate: string; endDate: string; totalMarks: number; passingMarks: number; status: string } | string;
   studentId: { _id: string; name: string; admissionNumber: string; standard?: string } | string;
   teacherId?: string;
   standard: string;
@@ -862,6 +863,7 @@ export interface ExamMark {
   maxMarks: number;
   subject?: string;
   remarks?: string;
+  isApproved?: boolean;
 }
 
 export interface Syllabus {
@@ -889,6 +891,12 @@ export async function createExam(payload: {
   });
 }
 
+export async function deleteExam(examId: string) {
+  return api<{ success: boolean; message: string }>(`/academic/exams/${examId}`, {
+    method: 'DELETE',
+  });
+}
+
 export async function submitExamMarks(
   examId: string,
   payload: {
@@ -905,6 +913,18 @@ export async function submitExamMarks(
 export async function fetchExamMarks(examId: string, standard?: string) {
   const query = standard ? `?standard=${encodeURIComponent(standard)}` : '';
   return api<{ success: boolean; data: { marks: ExamMark[] } }>(`/academic/exams/${examId}/marks${query}`);
+}
+
+export async function approveExamMarks(examId: string, standard?: string) {
+  return api<{ success: boolean; message: string }>(`/academic/exams/${examId}/approve-marks`, {
+    method: 'PATCH',
+    body: { standard },
+  });
+}
+
+export async function fetchParentExamResults(studentId?: string) {
+  const query = studentId ? `?studentId=${studentId}` : '';
+  return api<{ success: boolean; data: { results: ExamMark[] } }>(`/parent/exams/results${query}`);
 }
 
 export async function fetchSyllabus(standard?: string) {

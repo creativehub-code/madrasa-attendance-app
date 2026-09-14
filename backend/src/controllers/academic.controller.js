@@ -68,6 +68,38 @@ const getExams = asyncHandler(async (req, res) => {
 });
 
 /**
+ * @desc   Delete an examination & associated marks/announcements
+ * @route  DELETE /api/academic/exams/:examId
+ * @access Admin
+ */
+const deleteExam = asyncHandler(async (req, res) => {
+  const { examId } = req.params;
+
+  const exam = await Examination.findById(examId);
+  if (!exam) {
+    throw new AppError('Examination not found.', 404);
+  }
+
+  // Remove automatic announcement matching exam title if any
+  if (exam.title) {
+    await Announcement.deleteMany({
+      message: { $regex: exam.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' },
+    });
+  }
+
+  // Delete examination document
+  await Examination.findByIdAndDelete(examId);
+
+  // Clean up submitted marks for this exam
+  await ExamMark.deleteMany({ examId });
+
+  res.status(200).json({
+    success: true,
+    message: 'Examination deleted successfully.',
+  });
+});
+
+/**
  * @desc   Submit or update student exam marks efficiently using bulkWrite
  * @route  POST /api/academic/exams/:examId/marks
  * @access Teacher, school_teacher, Admin
@@ -100,6 +132,7 @@ const submitExamMarks = asyncHandler(async (req, res) => {
           maxMarks: item.maxMarks !== undefined ? Number(item.maxMarks) : exam.totalMarks || 100,
           subject: item.subject || 'General',
           remarks: item.remarks || '',
+          isApproved: false, // Must default to false until Admin approves
         },
       },
       upsert: true,
@@ -110,7 +143,7 @@ const submitExamMarks = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: 'Student marks submitted successfully.',
+    message: 'Student marks submitted successfully and sent for Admin approval.',
   });
 });
 
@@ -140,6 +173,29 @@ const getExamMarks = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     data: { marks },
+  });
+});
+
+/**
+ * @desc   Approve exam marks for an examination (Admin only)
+ * @route  PATCH /api/academic/exams/:examId/approve-marks
+ * @access Admin
+ */
+const approveExamMarks = asyncHandler(async (req, res) => {
+  const { examId } = req.params;
+  const { standard } = req.body;
+
+  let filter = { examId };
+  if (standard) {
+    filter.standard = standard;
+  }
+
+  const result = await ExamMark.updateMany(filter, { $set: { isApproved: true } });
+
+  res.status(200).json({
+    success: true,
+    message: 'Exam marks approved & published to parents successfully.',
+    data: { modifiedCount: result.modifiedCount },
   });
 });
 
@@ -202,8 +258,10 @@ const getSyllabus = asyncHandler(async (req, res) => {
 module.exports = {
   createExam,
   getExams,
+  deleteExam,
   submitExamMarks,
   getExamMarks,
+  approveExamMarks,
   updateSyllabus,
   getSyllabus,
 };

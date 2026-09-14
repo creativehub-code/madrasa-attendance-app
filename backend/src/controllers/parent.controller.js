@@ -1,4 +1,4 @@
-const { Student, Progress, Announcement, Feedback, SchoolProgress, IssueReport } = require('../models');
+const { Student, Progress, Announcement, Feedback, SchoolProgress, IssueReport, ExamMark, Examination } = require('../models');
 const { AppError, asyncHandler } = require('../utils/asyncHandler');
 
 const startOfDay = (d = new Date()) => {
@@ -221,6 +221,44 @@ const markReportAsRead = asyncHandler(async (req, res) => {
   res.json({ success: true, data: { message: 'Report marked as read' } });
 });
 
+// ─── GET /parent/exams/results ────────────────────────────────────────────────────
+
+const getApprovedExamResults = asyncHandler(async (req, res) => {
+  const { studentId } = req.query;
+
+  // 1. Get all active student IDs belonging to logged-in parent
+  const parentStudents = await Student.find({ parentId: req.user._id, isActive: true }).select('_id name standard').lean();
+  const allowedStudentIds = parentStudents.map((s) => String(s._id));
+
+  // 2. Strict Privacy Check: If specific studentId passed, verify ownership
+  let targetStudentIds = allowedStudentIds;
+  if (studentId) {
+    if (!allowedStudentIds.includes(String(studentId))) {
+      throw new AppError('Unauthorized access to student exam records.', 403);
+    }
+    targetStudentIds = [String(studentId)];
+  }
+
+  if (targetStudentIds.length === 0) {
+    return res.json({ success: true, data: { results: [] } });
+  }
+
+  // 3. Query ExamMark records where isApproved === true ONLY
+  const results = await ExamMark.find({
+    studentId: { $in: targetStudentIds },
+    isApproved: true,
+  })
+    .populate('examId', 'title startDate endDate totalMarks passingMarks status')
+    .populate('studentId', 'name admissionNumber standard')
+    .sort({ createdAt: -1 })
+    .lean();
+
+  res.json({
+    success: true,
+    data: { results },
+  });
+});
+
 module.exports = {
   getParentChildren,
   getDailyProgress,
@@ -229,4 +267,5 @@ module.exports = {
   sendFeedback,
   getParentReports,
   markReportAsRead,
+  getApprovedExamResults,
 };
